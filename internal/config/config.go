@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/viper"
 )
@@ -17,15 +16,24 @@ type Config struct {
 }
 
 type CliConfig struct {
-	Version         string    `mapstructure:"version" json:"version"`
-	Checksum        string    `mapstructure:"checksum" json:"checksum"`
-	LastUpdateCheck time.Time `mapstructure:"last_update_check" json:"last_update_check"`
+	Version         string `mapstructure:"version" json:"version"`
+	Checksum        string `mapstructure:"checksum" json:"checksum"`
+	LastUpdateCheck string `mapstructure:"last_update_check" json:"last_update_check"`
 }
 
 type InstanceConfig struct {
-	URL     string    `mapstructure:"url" json:"url"`
-	APIKey  string    `mapstructure:"api_key" json:"api_key"`
-	AddedAt time.Time `mapstructure:"added_at" json:"added_at"`
+	URL     string `mapstructure:"url" json:"url"`
+	APIKey  string `mapstructure:"api_key" json:"api_key"`
+	AddedAt string `mapstructure:"added_at" json:"added_at"`
+}
+
+// RedactedAPIKey returns a safe-to-print version of the API Key.
+// It shows up to the first 6 characters and masks the rest.
+func (c InstanceConfig) RedactedAPIKey() string {
+	if len(c.APIKey) <= 6 {
+		return "******"
+	}
+	return c.APIKey[:6] + "******"
 }
 
 type SettingsConfig struct {
@@ -33,9 +41,12 @@ type SettingsConfig struct {
 	TimeoutSeconds int    `mapstructure:"timeout_seconds" json:"timeout_seconds"`
 }
 
+// UserConfigDirFunc holds the pathing function for configuration mapping
+var UserConfigDirFunc = os.UserConfigDir
+
 // ConfigPath resolves the configuration file path
 func ConfigPath() (string, error) {
-	base, err := os.UserConfigDir()
+	base, err := UserConfigDirFunc()
 	if err != nil {
 		return "", err
 	}
@@ -57,7 +68,7 @@ func Load() (*Config, error) {
 	viper.SetConfigType("json")
 
 	// Set defaults
-	viper.SetDefault("settings.output_format", "console")
+	viper.SetDefault("settings.output_format", "pretty")
 	viper.SetDefault("settings.timeout_seconds", 30)
 	viper.SetDefault("instances", map[string]InstanceConfig{})
 
@@ -73,11 +84,21 @@ func Load() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	err = viper.Unmarshal(&cfg)
+	if err != nil {
 		return nil, err
 	}
 
 	return &cfg, nil
+}
+
+// Save writes the Config to the configuration file using viper
+func (c *Config) Save() error {
+	viper.Set("cli", c.Cli)
+	viper.Set("active_instance", c.ActiveInstance)
+	viper.Set("instances", c.Instances)
+	viper.Set("settings", c.Settings)
+	return viper.WriteConfig()
 }
 
 // Save writes the current viper configuration to file
