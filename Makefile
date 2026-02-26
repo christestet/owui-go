@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: build test lint clean run
+.PHONY: build test lint clean run typecheck deps
 
 # Variables
 BINARY_NAME=owui
@@ -32,3 +32,9 @@ deps:
 # Format code
 fmt:
 	$(GO) fmt ./...
+
+lint:
+	$(GO) vet ./...
+
+typecheck:
+	$(GO) tool type-check ./...

@@ -152,3 +152,6 @@ Always make shure to test your code and always check if new features break exist
 
 ## Project Structure
 Have a look at: .agents/skills/golang-pro/references/project-structure.md
+
+
+Never use emojis in the code or in the output of the cli tool.

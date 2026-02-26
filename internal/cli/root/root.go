@@ -11,13 +11,27 @@ import (
 var (
 	instance string
 	output   string
+	jsonOut  bool
 	filter   string
+
+	// validOutputFormats defines the allowed values for --output flag
+	validOutputFormats = map[string]bool{
+		"":       true,
+		"pretty": true,
+		"json":   true,
+	}
 
 	// Cmd represents the base command when called without any subcommands
 	Cmd = &cobra.Command{
 		Use:   "owui",
 		Short: "owui is a CLI to manage Open WebUI instances",
 		Long:  `A fast and flexible CLI written in Go for managing multiple Open WebUI instances.`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if !validOutputFormats[output] {
+				return fmt.Errorf("invalid output format %q: must be 'pretty' or 'json'", output)
+			}
+			return nil
+		},
 	}
 )
 
@@ -30,18 +44,24 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(initConfigCommand)
 
 	Cmd.PersistentFlags().StringVarP(&instance, "instance", "i", "", "instance name to use (default: active_instance from config)")
 	Cmd.PersistentFlags().StringVarP(&output, "output", "o", "", "output format (console or json)")
+	Cmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "output in json format")
 	Cmd.PersistentFlags().StringVarP(&filter, "filter", "f", "", "filter results")
 }
 
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {
+func initConfig() error {
 	_, err := config.Load()
 	if err != nil {
 		// Just print error, we can still run help commands
 		fmt.Printf("Error loading configuration: %v\n", err)
 	}
+	return err
+}
+
+func initConfigCommand() {
+	_ = initConfig() // Cobra OnInitialize cannot handle errors, so we wrap it
 }

@@ -64,3 +64,9 @@ func (c *Client) sendRequest(method, endpoint string, body interface{}) ([]byte,
 
 	return respBody, nil
 }
+
+// Healthcheck calls the /health endpoint to verify the instance is responsive
+func (c *Client) Healthcheck() error {
+	_, err := c.sendRequest("GET", "/health", nil)
+	return err
+}
