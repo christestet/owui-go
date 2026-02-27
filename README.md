@@ -16,6 +16,7 @@ Single binary, cross-platform (Linux/macOS, amd64/arm64).
 - JSON and pretty-printed table output formats
 - Shell completions (bash, zsh, fish, powershell)
 - Configuration per-user with auto-detection of config directory
+- Self-update: `owui update` replaces the binary in-place; background check notifies on new releases
 
 ## Installation
 
@@ -88,6 +89,9 @@ owui instances remove work
 
 # Install shell completions (bash/zsh/fish)
 owui completion install
+
+# Update owui to the latest release
+owui update
 
 # Show version
 owui version
