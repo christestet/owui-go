@@ -28,7 +28,23 @@ curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/in
 To install to a custom directory:
 
 ```sh
-INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/install.sh | INSTALL_DIR=~/.local/bin sh
+```
+
+### Uninstall
+
+```sh
+rm $(which owui)
+
+# Remove configuration
+rm -rf ~/.config/owui                       # Linux
+rm -rf ~/Library/Application\ Support/owui  # macOS
+```
+
+If you installed to a custom directory:
+
+```sh
+rm ~/.local/bin/owui
 ```
 
 ### Go install
