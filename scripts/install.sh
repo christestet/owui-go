@@ -3,7 +3,7 @@ set -e
 
 REPO="christestet/owui-go"
 BINARY="owui"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 log() {
     echo "$@" >&2
@@ -34,11 +34,6 @@ case "$ARCH" in
 esac
 
 log "Detected platform: ${OS}/${ARCH}"
-
-# Set default INSTALL_DIR to user-only path if not provided
-if [ -z "$INSTALL_DIR" ]; then
-    INSTALL_DIR="$HOME/.local/bin"
-fi
 
 # Ensure INSTALL_DIR exists
 mkdir -p "$INSTALL_DIR"
