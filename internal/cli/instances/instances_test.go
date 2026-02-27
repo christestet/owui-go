@@ -64,6 +64,10 @@ func TestHealthCommand_NoActiveInstance(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
+
 	// Force an empty config directory to ensure NO instance is found
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")
