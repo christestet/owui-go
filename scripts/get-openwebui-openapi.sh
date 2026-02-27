@@ -30,7 +30,7 @@ CONTAINER_ID=$(docker run -d --rm -p ${PORT}:8080 \
   -e ENABLE_CODE_INTERPRETER=False \
   -e ENABLE_IMAGE_GENERATION=False \
   -e WEBUI_AUTH=False \
-  $IMAGE)
+  "$IMAGE")
 
 echo "waiting for openwebui to start"
 
