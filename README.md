@@ -19,22 +19,28 @@ Single binary, cross-platform (Linux/macOS, amd64/arm64).
 
 ## Installation
 
-### Quick install
+### Quick install (Self-contained)
+
+The recommended way to install `owui` is to a user-local directory. This does not require `sudo`.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/install.sh | sh
 ```
 
-To install to a custom directory:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/install.sh | INSTALL_DIR=~/.local/bin sh
-```
+The script installs to `~/.local/bin` by default. If this directory is not in your `PATH`, the script will provide instructions on how to add it.
 
 ### Uninstall
 
+To completely remove `owui` and its configuration:
+
 ```sh
-rm $(which owui)
+curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/uninstall.sh | sh
+```
+
+Alternatively, you can manually remove the files:
+
+```sh
+rm ~/.local/bin/owui
 
 # Remove configuration
 rm -rf ~/.config/owui                       # Linux

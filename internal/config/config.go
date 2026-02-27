@@ -16,9 +16,10 @@ type Config struct {
 }
 
 type CliConfig struct {
-	Version         string `mapstructure:"version" json:"version"`
-	Checksum        string `mapstructure:"checksum" json:"checksum"`
-	LastUpdateCheck string `mapstructure:"last_update_check" json:"last_update_check"`
+	Version              string `mapstructure:"version" json:"version"`
+	Checksum             string `mapstructure:"checksum" json:"checksum"`
+	LastUpdateCheck      string `mapstructure:"last_update_check" json:"last_update_check"`
+	CompletionsInstalled bool   `mapstructure:"completions_installed" json:"completions_installed"`
 }
 
 type InstanceConfig struct {
