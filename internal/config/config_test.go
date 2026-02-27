@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
 func TestConfigLoadAndSave(t *testing.T) {
@@ -33,9 +31,6 @@ func TestConfigLoadAndSave(t *testing.T) {
 		UserConfigDirFunc = origUserConfigDir
 	}()
 
-	// Reset viper state before test
-	viper.Reset()
-
 	// Test Load (should create default config)
 	cfg, err := Load()
 	if err != nil {
@@ -61,8 +56,7 @@ func TestConfigLoadAndSave(t *testing.T) {
 		t.Fatalf("Save() failed: %v", err)
 	}
 
-	// Reset viper and reload to verify persistence
-	viper.Reset()
+	// Reload to verify persistence
 	loadedCfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() after Save() failed: %v", err)
@@ -120,7 +114,6 @@ func TestConfigLoad_BadJson(t *testing.T) {
 	path, _ := ConfigPath()
 	os.WriteFile(path, []byte(`{INVALID_JSON`), 0644)
 
-	viper.Reset()
 	_, err = Load()
 	if err == nil {
 		t.Errorf("expected error loading invalid json")
