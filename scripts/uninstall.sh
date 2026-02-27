@@ -48,6 +48,24 @@ log "Removing shell completions..."
 rm -f "$HOME/.zfunc/_$BINARY" 2>/dev/null || true
 rm -f "$HOME/.zsh/completions/_$BINARY" 2>/dev/null || true
 rm -f "$HOME/.bash_completion.d/$BINARY" 2>/dev/null || true
+rm -f "$HOME/.local/share/bash-completion/completions/$BINARY" 2>/dev/null || true
 rm -f "$HOME/.config/fish/completions/$BINARY.fish" 2>/dev/null || true
+
+# 4. Remove shell config lines added by 'owui completion install' (best effort)
+MARKER="# owui shell completions"
+
+remove_owui_block() {
+    rcfile="$1"
+    if [ -f "$rcfile" ] && grep -q "$MARKER" "$rcfile"; then
+        log "Cleaning up $rcfile..."
+        # Remove the marker line and the line(s) immediately following it that belong to owui
+        sed -i.bak "/$MARKER/,/^$/d" "$rcfile" 2>/dev/null || \
+            sed -i '' "/$MARKER/,/^$/d" "$rcfile" 2>/dev/null || true
+        rm -f "${rcfile}.bak" 2>/dev/null || true
+    fi
+}
+
+remove_owui_block "$HOME/.zshrc"
+remove_owui_block "$HOME/.bashrc"
 
 log "Successfully uninstalled $BINARY."
