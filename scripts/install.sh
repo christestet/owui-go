@@ -18,7 +18,7 @@ fail() {
 command -v curl >/dev/null 2>&1 || fail "curl is required but not installed"
 command -v tar >/dev/null 2>&1 || fail "tar is required but not installed"
 
-# Detect OS
+# Detector for OS and Architecture
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 case "$OS" in
     linux)  OS="linux" ;;
@@ -26,7 +26,6 @@ case "$OS" in
     *)      fail "unsupported operating system: $OS (supported: linux, darwin)" ;;
 esac
 
-# Detect architecture
 ARCH=$(uname -m)
 case "$ARCH" in
     x86_64|amd64)   ARCH="amd64" ;;
@@ -35,6 +34,14 @@ case "$ARCH" in
 esac
 
 log "Detected platform: ${OS}/${ARCH}"
+
+# Set default INSTALL_DIR to user-only path if not provided
+if [ -z "$INSTALL_DIR" ]; then
+    INSTALL_DIR="$HOME/.local/bin"
+fi
+
+# Ensure INSTALL_DIR exists
+mkdir -p "$INSTALL_DIR"
 
 # Fetch latest version
 log "Fetching latest release..."
@@ -49,7 +56,6 @@ fi
 TAG=$(echo "$RELEASE_INFO" | grep '"tag_name"' | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
 [ -z "$TAG" ] && fail "could not determine latest version"
 
-# Strip v prefix for archive naming (goreleaser uses Version without v)
 VERSION="${TAG#v}"
 log "Latest version: ${VERSION}"
 
@@ -81,24 +87,37 @@ else
 fi
 
 if [ "$EXPECTED" != "$ACTUAL" ]; then
-    fail "checksum mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+    fail "checksum mismatch"
 fi
 log "Checksum verified."
 
 # Extract
 tar -xzf "${TMP_DIR}/${ARCHIVE}" -C "${TMP_DIR}"
 
-# Install
+# Install binary
 log "Installing ${BINARY} to ${INSTALL_DIR}..."
-if install -m 755 "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}" 2>/dev/null; then
-    :
-elif command -v sudo >/dev/null 2>&1; then
-    log "Permission denied, retrying with sudo..."
-    sudo install -m 755 "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-else
-    fail "permission denied and sudo not available. Try: INSTALL_DIR=~/.local/bin sh install.sh"
-fi
+install -m 755 "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 
 log ""
 log "${BINARY} ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
-log "Run '${BINARY} version' to verify."
+
+# Check if INSTALL_DIR is in PATH
+if echo "$PATH" | grep -q "${INSTALL_DIR}"; then
+    :
+else
+    log "WARNING: ${INSTALL_DIR} is not in your PATH."
+    log "To fix this, add the following line to your .bashrc or .zshrc:"
+    log "  export PATH=\"\$PATH:${INSTALL_DIR}\""
+    log ""
+fi
+
+# Install shell completions
+if [ -f "${INSTALL_DIR}/${BINARY}" ]; then
+    log "Attempting to install shell completions..."
+    # Execute the binary to install completions using its internal logic
+    "${INSTALL_DIR}/${BINARY}" completion install --quiet || true
+    log "Completions installation attempted. Use '${BINARY} completion --help' for manual setup if needed."
+fi
+
+log ""
+log "Run '${BINARY} version' to verify installation."
