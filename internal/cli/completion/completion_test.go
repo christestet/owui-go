@@ -3,6 +3,7 @@ package completion
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -10,6 +11,11 @@ import (
 )
 
 func TestDetectShell(t *testing.T) {
+	defaultUnknown := ""
+	if runtime.GOOS == "darwin" {
+		defaultUnknown = "zsh"
+	}
+
 	tests := []struct {
 		name     string
 		shellEnv string
@@ -18,8 +24,8 @@ func TestDetectShell(t *testing.T) {
 		{"detect zsh", "/bin/zsh", "zsh"},
 		{"detect bash", "/bin/bash", "bash"},
 		{"detect fish", "/usr/local/bin/fish", "fish"},
-		{"detect unknown", "/bin/sh", ""},
-		{"detect empty", "", ""},
+		{"detect unknown", "/bin/sh", defaultUnknown},
+		{"detect empty", "", defaultUnknown},
 	}
 
 	for _, tt := range tests {
@@ -30,6 +36,24 @@ func TestDetectShell(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDetectShellFallback(t *testing.T) {
+	t.Run("fallback from zshrc", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(tmpDir, ".zshrc"), []byte("# test\n"), 0644); err != nil {
+			t.Fatalf("failed to write .zshrc: %v", err)
+		}
+
+		origUserHomeDir := UserHomeDirFunc
+		UserHomeDirFunc = func() (string, error) { return tmpDir, nil }
+		defer func() { UserHomeDirFunc = origUserHomeDir }()
+
+		t.Setenv("SHELL", "")
+		if got := detectShell(); got != "zsh" {
+			t.Errorf("expected %q, got %q", "zsh", got)
+		}
+	})
 }
 
 func TestInstallCompletion(t *testing.T) {
@@ -169,9 +193,9 @@ func TestEnsureZshConfig(t *testing.T) {
 		if !strings.Contains(rc, "fpath=(~/.zsh/completions $fpath)") {
 			t.Error("expected fpath line added")
 		}
-		// The "autoload -U compinit; compinit" line should not be added again
-		if strings.Count(rc, "autoload -U compinit; compinit") != 1 {
-			t.Error("expected no additional compinit line added")
+		// We intentionally run compinit again in the owui block so new fpath is active.
+		if strings.Count(rc, "autoload -U compinit; compinit") != 2 {
+			t.Error("expected one additional compinit line added")
 		}
 	})
 }

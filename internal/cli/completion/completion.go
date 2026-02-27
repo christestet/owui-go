@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/christestet/owui-go/internal/config"
@@ -118,6 +119,24 @@ func detectShell() string {
 			return "fish"
 		}
 	}
+
+	home, err := UserHomeDirFunc()
+	if err == nil {
+		if _, err := os.Stat(filepath.Join(home, ".zshrc")); err == nil {
+			return "zsh"
+		}
+		if _, err := os.Stat(filepath.Join(home, ".bashrc")); err == nil {
+			return "bash"
+		}
+		if _, err := os.Stat(filepath.Join(home, ".config", "fish")); err == nil {
+			return "fish"
+		}
+	}
+
+	if runtime.GOOS == "darwin" {
+		return "zsh"
+	}
+
 	return ""
 }
 
@@ -218,9 +237,7 @@ func ensureZshConfig(home string) error {
 	if !hasFpath {
 		lines = append(lines, `fpath=(~/.zsh/completions $fpath)`)
 	}
-	if !hasCompinit {
-		lines = append(lines, "autoload -U compinit; compinit")
-	}
+	lines = append(lines, "autoload -U compinit; compinit")
 	lines = append(lines, "")
 
 	f, err := os.OpenFile(rcPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
