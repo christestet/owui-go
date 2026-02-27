@@ -74,12 +74,23 @@ func initConfig() error {
 	_, err := config.Load()
 	if err != nil {
 		// Just print error, we can still run help commands
-		fmt.Printf("Error loading configuration: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 	}
 	return err
 }
 
+func isCompletionRequest() bool {
+	return len(os.Args) > 1 &&
+		(os.Args[1] == cobra.ShellCompRequestCmd || os.Args[1] == cobra.ShellCompNoDescRequestCmd)
+}
+
 func initConfigCommand() {
+	// Skip config init and background update check during shell completion.
+	// Completion callbacks (ValidArgsFunction, RegisterFlagCompletionFunc)
+	// load config themselves and handle errors gracefully.
+	if isCompletionRequest() {
+		return
+	}
 	_ = initConfig()
 	go backgroundUpdateCheck()
 }
