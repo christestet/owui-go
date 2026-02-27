@@ -1,10 +1,14 @@
 package root
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/christestet/owui-go/internal/cli/version"
 	"github.com/christestet/owui-go/internal/config"
+	"github.com/christestet/owui-go/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -61,5 +65,35 @@ func initConfig() error {
 }
 
 func initConfigCommand() {
-	_ = initConfig() // Cobra OnInitialize cannot handle errors, so we wrap it
+	_ = initConfig()
+	go backgroundUpdateCheck()
+}
+
+func backgroundUpdateCheck() {
+	if version.Version == "dev" {
+		return
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return
+	}
+	if !updater.ShouldCheck(cfg.Cli.LastUpdateCheck) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	release, updateAvailable, err := updater.CheckLatest(ctx, version.Version)
+	if err != nil {
+		return
+	}
+	cfg.Cli.LastUpdateCheck = time.Now().UTC().Format(time.RFC3339)
+	_ = cfg.Save()
+
+	if updateAvailable {
+		fmt.Fprintf(os.Stderr,
+			"\nA new version of owui is available: %s (you have %s)\nRun 'owui update' to upgrade.\n\n",
+			release.Version(), version.Version,
+		)
+	}
 }
