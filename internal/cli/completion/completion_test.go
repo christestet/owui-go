@@ -11,6 +11,13 @@ import (
 )
 
 func TestDetectShell(t *testing.T) {
+	// Mock home dir to an empty temp dir so the fallback doesn't find
+	// RC files from the real home (e.g. ~/.bashrc on CI Ubuntu runners).
+	tmpDir := t.TempDir()
+	origUserHomeDir := UserHomeDirFunc
+	UserHomeDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { UserHomeDirFunc = origUserHomeDir }()
+
 	defaultUnknown := ""
 	if runtime.GOOS == "darwin" {
 		defaultUnknown = "zsh"
