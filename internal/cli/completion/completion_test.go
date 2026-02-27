@@ -3,6 +3,7 @@ package completion
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -92,6 +93,132 @@ func TestInstallCompletion_Fallbacks(t *testing.T) {
 		path := filepath.Join(tmpDir, ".local", "share", "bash-completion", "completions", "owui")
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			t.Errorf("expected file %q to be created", path)
+		}
+	})
+}
+
+func TestEnsureZshConfig(t *testing.T) {
+	t.Run("fresh zshrc", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		quiet = true
+		defer func() { quiet = false }()
+
+		err := ensureZshConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("ensureZshConfig failed: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(tmpDir, ".zshrc"))
+		if err != nil {
+			t.Fatalf("failed to read .zshrc: %v", err)
+		}
+		rc := string(content)
+
+		if !strings.Contains(rc, owuiShellMarker) {
+			t.Error("expected owui marker in .zshrc")
+		}
+		if !strings.Contains(rc, "fpath=(~/.zsh/completions $fpath)") {
+			t.Error("expected fpath line in .zshrc")
+		}
+		if !strings.Contains(rc, "compinit") {
+			t.Error("expected compinit in .zshrc")
+		}
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		quiet = true
+		defer func() { quiet = false }()
+
+		// Run twice
+		if err := ensureZshConfig(tmpDir); err != nil {
+			t.Fatalf("first call failed: %v", err)
+		}
+		if err := ensureZshConfig(tmpDir); err != nil {
+			t.Fatalf("second call failed: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(tmpDir, ".zshrc"))
+		if err != nil {
+			t.Fatalf("failed to read .zshrc: %v", err)
+		}
+		// Marker should appear exactly once
+		if count := strings.Count(string(content), owuiShellMarker); count != 1 {
+			t.Errorf("expected marker once, got %d times", count)
+		}
+	})
+
+	t.Run("existing compinit", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		quiet = true
+		defer func() { quiet = false }()
+
+		// Pre-populate .zshrc with compinit
+		os.WriteFile(filepath.Join(tmpDir, ".zshrc"), []byte("autoload -U compinit; compinit\n"), 0644)
+
+		if err := ensureZshConfig(tmpDir); err != nil {
+			t.Fatalf("ensureZshConfig failed: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(tmpDir, ".zshrc"))
+		if err != nil {
+			t.Fatalf("failed to read .zshrc: %v", err)
+		}
+		rc := string(content)
+
+		if !strings.Contains(rc, "fpath=(~/.zsh/completions $fpath)") {
+			t.Error("expected fpath line added")
+		}
+		// The "autoload -U compinit; compinit" line should not be added again
+		if strings.Count(rc, "autoload -U compinit; compinit") != 1 {
+			t.Error("expected no additional compinit line added")
+		}
+	})
+}
+
+func TestEnsureBashConfig(t *testing.T) {
+	t.Run("fresh bashrc", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		quiet = true
+		defer func() { quiet = false }()
+
+		err := ensureBashConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("ensureBashConfig failed: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(tmpDir, ".bashrc"))
+		if err != nil {
+			t.Fatalf("failed to read .bashrc: %v", err)
+		}
+		rc := string(content)
+
+		if !strings.Contains(rc, owuiShellMarker) {
+			t.Error("expected owui marker in .bashrc")
+		}
+		if !strings.Contains(rc, "bash-completion/completions/owui") {
+			t.Error("expected source line in .bashrc")
+		}
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		quiet = true
+		defer func() { quiet = false }()
+
+		if err := ensureBashConfig(tmpDir); err != nil {
+			t.Fatalf("first call failed: %v", err)
+		}
+		if err := ensureBashConfig(tmpDir); err != nil {
+			t.Fatalf("second call failed: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(tmpDir, ".bashrc"))
+		if err != nil {
+			t.Fatalf("failed to read .bashrc: %v", err)
+		}
+		if count := strings.Count(string(content), owuiShellMarker); count != 1 {
+			t.Errorf("expected marker once, got %d times", count)
 		}
 	})
 }

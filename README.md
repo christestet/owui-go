@@ -86,6 +86,9 @@ owui instances health
 # Remove an instance
 owui instances remove work
 
+# Install shell completions (bash/zsh/fish)
+owui completion install
+
 # Show version
 owui version
 ```
