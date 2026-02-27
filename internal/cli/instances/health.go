@@ -1,6 +1,7 @@
 package instances
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"text/tabwriter"
@@ -35,17 +36,21 @@ var healthCmd = &cobra.Command{
 		}
 
 		outputFormat, _ := cmd.Flags().GetString("output")
-		jsonOutput, _ := cmd.Flags().GetBool("json")
+
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
 
 		client := api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds)
-		err = client.Healthcheck()
+		err = client.Healthcheck(ctx)
 
 		status := "HEALTHY"
 		if err != nil {
 			status = "DOWN"
 		}
 
-		if jsonOutput || outputFormat == "json" {
+		if outputFormat == "json" {
 			type HealthStatus struct {
 				Name   string `json:"name"`
 				URL    string `json:"url"`
@@ -65,6 +70,9 @@ var healthCmd = &cobra.Command{
 				return marshalErr
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			if err != nil {
+				return fmt.Errorf("instance %q is not healthy", targetInstance)
+			}
 			return nil
 		}
 
@@ -75,6 +83,7 @@ var healthCmd = &cobra.Command{
 
 		if err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "\nError details: %v\n", err)
+			return fmt.Errorf("instance %q is not healthy", targetInstance)
 		}
 
 		return nil

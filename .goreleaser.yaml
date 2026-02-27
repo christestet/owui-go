@@ -11,6 +11,11 @@ builds:
     binary: owui
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/christestet/owui-go/internal/cli/version.Version={{.Version}}
+      - -X github.com/christestet/owui-go/internal/cli/version.Commit={{.ShortCommit}}
+      - -X github.com/christestet/owui-go/internal/cli/version.Date={{.Date}}
     goos:
       - linux
       - darwin

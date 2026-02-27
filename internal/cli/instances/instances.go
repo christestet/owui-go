@@ -3,6 +3,7 @@ package instances
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -27,7 +28,6 @@ var listCmd = &cobra.Command{
 		}
 
 		outputFormat, _ := cmd.Flags().GetString("output")
-		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		type SafeInstance struct {
 			Name    string `json:"name"`
@@ -47,8 +47,11 @@ var listCmd = &cobra.Command{
 				Active:  name == cfg.ActiveInstance,
 			})
 		}
+		sort.Slice(safes, func(i, j int) bool {
+			return safes[i].Name < safes[j].Name
+		})
 
-		if jsonOutput || outputFormat == "json" {
+		if outputFormat == "json" {
 			b, err := json.MarshalIndent(safes, "", "  ")
 			if err != nil {
 				return err
@@ -122,8 +125,9 @@ var useCmd = &cobra.Command{
 
 // removeCmd represents the remove command we need tab auto complete for the instance name
 var removeCmd = &cobra.Command{
-	Use:     "remove",
+	Use:     "remove <instance-name>",
 	Short:   "Remove an instance",
+	Args:    cobra.ExactArgs(1),
 	Aliases: []string{"rm"},
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
@@ -147,10 +151,6 @@ var removeCmd = &cobra.Command{
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
-		}
-
-		if len(args) == 0 {
-			return fmt.Errorf("instance name is required")
 		}
 
 		instanceName := args[0]

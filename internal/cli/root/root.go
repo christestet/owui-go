@@ -11,7 +11,6 @@ import (
 var (
 	instance string
 	output   string
-	jsonOut  bool
 	filter   string
 
 	// validOutputFormats defines the allowed values for --output flag
@@ -47,8 +46,7 @@ func init() {
 	cobra.OnInitialize(initConfigCommand)
 
 	Cmd.PersistentFlags().StringVarP(&instance, "instance", "i", "", "instance name to use (default: active_instance from config)")
-	Cmd.PersistentFlags().StringVarP(&output, "output", "o", "", "output format (console or json)")
-	Cmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "output in json format")
+	Cmd.PersistentFlags().StringVarP(&output, "output", "o", "", "output format (pretty or json)")
 	Cmd.PersistentFlags().StringVarP(&filter, "filter", "f", "", "filter results")
 }
 

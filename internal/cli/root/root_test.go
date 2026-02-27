@@ -24,10 +24,13 @@ func TestRootCommand(t *testing.T) {
 }
 
 func TestExecuteRoot(t *testing.T) {
-	// Normally Execute() calls os.Exit on error, avoiding full panic
-	// We'll just run it as-is since os.Args are limited in tests
+	// Test Cmd.Execute() directly to avoid os.Exit(1) in Execute() wrapper
 	Cmd.SetArgs([]string{"--help"})
-	Execute()
+	buf := new(bytes.Buffer)
+	Cmd.SetOut(buf)
+	if err := Cmd.Execute(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 }
 
 func TestInitConfig(t *testing.T) {

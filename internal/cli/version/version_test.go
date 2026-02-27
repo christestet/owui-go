@@ -13,17 +13,20 @@ func TestVersionCommand(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	Cmd.SetOut(buf)
-
-	// Suppress standard output for test
 	Cmd.SetArgs([]string{})
-	_ = Cmd.Execute()
 
-	// Since Cmd.Run writes directly to fmt.Printf by default in this setup,
-	// let's just make sure the configuration is right and properties are accessible
-	if Cmd.Use != "version" {
-		t.Errorf("expected use 'version', got %q", Cmd.Use)
+	if err := Cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(Cmd.Short, "Print the version") {
-		t.Errorf("expected short description to mention version printing")
+
+	output := buf.String()
+	if !strings.Contains(output, "1.0.0") {
+		t.Errorf("expected output to contain version, got: %s", output)
+	}
+	if !strings.Contains(output, "abcdef") {
+		t.Errorf("expected output to contain commit, got: %s", output)
+	}
+	if !strings.Contains(output, "2026-02-26") {
+		t.Errorf("expected output to contain date, got: %s", output)
 	}
 }
