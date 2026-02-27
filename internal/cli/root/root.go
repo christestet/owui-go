@@ -18,12 +18,16 @@ var (
 	output   string
 	filter   string
 
+	runBackgroundUpdateCheck = true
+
 	// validOutputFormats defines the allowed values for --output flag
 	validOutputFormats = map[string]bool{
 		"":       true,
 		"pretty": true,
 		"json":   true,
 	}
+
+	backgroundUpdateCheckFunc = backgroundUpdateCheck
 
 	// Cmd represents the base command when called without any subcommands
 	Cmd = &cobra.Command{
@@ -92,7 +96,9 @@ func initConfigCommand() {
 		return
 	}
 	_ = initConfig()
-	go backgroundUpdateCheck()
+	if runBackgroundUpdateCheck {
+		go backgroundUpdateCheckFunc()
+	}
 }
 
 func backgroundUpdateCheck() {

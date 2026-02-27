@@ -10,6 +10,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+func TestMain(m *testing.M) {
+	origRunBackgroundUpdateCheck := runBackgroundUpdateCheck
+	runBackgroundUpdateCheck = false
+
+	code := m.Run()
+
+	runBackgroundUpdateCheck = origRunBackgroundUpdateCheck
+	os.Exit(code)
+}
+
 func TestRootCommand(t *testing.T) {
 	buf := new(bytes.Buffer)
 	Cmd.SetOut(buf)
@@ -34,8 +44,18 @@ func TestExecuteRoot(t *testing.T) {
 }
 
 func TestInitConfig(t *testing.T) {
-	// Simple invocation, should not panic even if no config exists natively
-	initConfig()
+	tmpDir, _ := os.MkdirTemp("", "owui-test-root-init-*")
+	defer os.RemoveAll(tmpDir)
+
+	origUserConfigDir := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) {
+		return tmpDir, nil
+	}
+	defer func() {
+		config.UserConfigDirFunc = origUserConfigDir
+	}()
+
+	_ = initConfig()
 }
 
 func TestInitConfig_ErrorLog(t *testing.T) {
