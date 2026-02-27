@@ -4,19 +4,27 @@
 [![CI](https://github.com/christestet/owui-go/actions/workflows/ci.yml/badge.svg)](https://github.com/christestet/owui-go/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A fast and flexible CLI written in Go for managing multiple Open WebUI instances.
+A fast and flexible CLI written in Go for managing multiple [Open WebUI](https://github.com/open-webui/open-webui) instances.
+
+This tool helps you seamlessly switch between and manage different instances of [Open WebUI](https://github.com/open-webui/open-webui) — an awesome open-source project that provides a user-friendly interface for interacting with various LLMs.
 
 Single binary, cross-platform (Linux/macOS, amd64/arm64).
 
 ## Features
 
-- Manage multiple Open WebUI instances (add, remove, switch, list)
+- Manage multiple [Open WebUI](https://github.com/open-webui/open-webui) instances (add, remove, switch, list)
 - Health checking of instances
 - Interactive TUI wizards for adding instances
 - JSON and pretty-printed table output formats
 - Shell completions (bash, zsh, fish, powershell)
 - Configuration per-user with auto-detection of config directory
 - Self-update: `owui update` replaces the binary in-place; background check notifies on new releases
+
+## About Open WebUI
+
+This tool is designed to work with [Open WebUI](https://github.com/open-webui/open-webui), an awesome open-source project that provides a user-friendly web interface for interacting with various Large Language Models (LLMs). Open WebUI allows you to run multiple instances with different configurations or LLM backends.
+
+If you haven't already, check out the [Open WebUI project](https://github.com/open-webui/open-webui) to learn more about this powerful platform.
 
 ## Installation
 
