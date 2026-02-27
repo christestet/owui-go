@@ -1,29 +1,34 @@
 # AGENTS.md
 
 ## Project Description
+
 `owui` is a Go-based CLI tool for managing multiple Open WebUI instances via the Open WebUI REST API. Focus: Single binary, shell-native autocomplete, interactive TUI pickers, self-update with checksum validation, cross-platform (Linux/macOS, amd64/arm64).
 we will use a config.json to store the configuration of the cli tool.
 
 ## Project Details
+
 This is a cli tool written in go.
-This cli tool is used to manage multiple instances of open webui. 
+This cli tool is used to manage multiple instances of open webui.
 Its usage experience should be similar to kubectl or docker.
-For the management of open webui, we will use the open webui api. You can have a look into the openapi spec at ./openapi-reference/*-openapi.json. 
+For the management of open webui, we will use the open webui api. You can have a look into the openapi spec at ./openapi-reference/\*-openapi.json.
 Each version of open webui has its own openapi spec, e.g. ./openapi-reference/0.8.5-openapi.json for version 0.8.5.
 
 ## Skills
+
 We are using the golang-pro skill to help us build it. - you can view the skill at .agents/skills/golang-pro/SKILL.md
 
-## Packages 
+## Packages
+
 To build the cli tool, we will use the following tools:
- - go version go1.26.0 darwin/arm64 as current version
- - `github.com/spf13/cobra` for cli framework
- - `github.com/spf13/viper` for configuration management
- - `github.com/charmbracelet/bubbletea` for ui
- - `github.com/charmbracelet/lipgloss` for styling
- - `github.com/charmbracelet/bubbles` for ui components
- - `github.com/charmbracelet/huh` for forms and wizards
- - `github.com/creativeprojects/go-selfupdate` for self update the binary
+
+- go version go1.26.0 darwin/arm64 as current version
+- `github.com/spf13/cobra` for cli framework
+- `github.com/spf13/viper` for configuration management
+- `github.com/charmbracelet/bubbletea` for ui
+- `github.com/charmbracelet/lipgloss` for styling
+- `github.com/charmbracelet/bubbles` for ui components
+- `github.com/charmbracelet/huh` for forms and wizards
+- `github.com/creativeprojects/go-selfupdate` for self update the binary
 
 ## Config File
 
@@ -88,50 +93,18 @@ owui help
 # list all instances
 owui instances list
 
-# switch to a different instance
-owui instances use <instance-name>
-
-# add a new instance
-owui instances add
-
-# remove an instance
-owui instances remove <instance-name>
-
-#### users ####
-# list all users
-owui users list --filter <user-role> <admin|user|pending> -i | --instance <instance-name> (or leave empty to use the active instance)
-
-# add a new user
-owui users add <user-name> <email> -> please refer to the openapi spec for the exact requiredfield names
-
-# remove an user
-owui users remove <user-name> (with tab auto completion)
-
 ...
-
-#### groups ####
-# list all groups
-owui groups list
-
-# add a new group
-owui groups add <group-name> --description <group-description>
-# remove an group
-owui groups remove <group-name> (with tab auto completion)
-
-# add a user or users to a group
-owui groups add-users <group-name> <user-name> <user-name> ... (auto complete)
-
-# remove a user or users from a group
-owui groups remove-users <group-name> <user-name> <user-name> ... (auto complete)
 
 #### -> have a look at the openapi spec for the exact field names and types
 ```
 
 All `owui` commands should support the following flags except `owui update` and `owui help`:
+
 - `-i | --instance <instance-name>` (or leave empty to use the active instance)
 - `-o | --output <output-format>` (or leave empty to use console output, which is the default, or json)
 
 Filters should be implemented as follows:
+
 - `-f | --filter <filter>` (or leave empty to use no filter)
 
 ## CICD and Release
@@ -142,16 +115,20 @@ Filters should be implemented as follows:
 - we will use the `go-selfupdate` library to update the cli tool.
 
 ## Git and GitHub
+
 - We are using GitHub Actions to build and release the cli tool.
 - We are developing this tool on dev branch, and will merge to main branch when we want to release a new version.
 - We are using conventional commits to version our commits.
+- we will commit to dev and create pr on main
+- for a new release we checkout main and create a tag with v<tag-version> that we than push.
 
 ## Testing
+
 Have a look at: .agents/skills/golang-pro/references/testing.md
 Always make shure to test your code and always check if new features break existing functionality and if the tests still covering all the functionality.
 
 ## Project Structure
-Have a look at: .agents/skills/golang-pro/references/project-structure.md
 
+Have a look at: .agents/skills/golang-pro/references/project-structure.md
 
 Never use emojis in the code or in the output of the cli tool.
