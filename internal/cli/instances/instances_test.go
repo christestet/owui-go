@@ -44,10 +44,12 @@ func TestHealthCommand(t *testing.T) {
 	// Since we mock the config file natively, we shouldn't fail configuration load
 	healthCmd.SetArgs([]string{})
 
-	// Test the health check explicitly
+	// Test the health check - should return error for unreachable instance
 	err = healthCmd.RunE(healthCmd, []string{})
-	if err != nil {
-		t.Errorf("did not expect command error, got: %v", err)
+	if err == nil {
+		t.Errorf("expected error for unreachable instance, got nil")
+	} else if !strings.Contains(err.Error(), "not healthy") {
+		t.Errorf("expected 'not healthy' error, got: %v", err)
 	}
 }
 
@@ -206,10 +208,11 @@ func TestListCommand(t *testing.T) {
 		t.Errorf("expected output NOT to contain plain short key, got:\n%s", output)
 	}
 
-	// Test JSON output
-	// Add persistent flag for test locally if needed, or pass it via flags
-	listCmd.Flags().Bool("json", false, "")
-	listCmd.Flags().Set("json", "true")
+	// Test JSON output - register flags if not already present (they're persistent on root)
+	if listCmd.Flags().Lookup("output") == nil {
+		listCmd.Flags().String("output", "", "")
+	}
+	listCmd.Flags().Set("output", "json")
 
 	buf.Reset()
 	err = listCmd.RunE(listCmd, []string{})

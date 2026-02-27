@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +15,13 @@ func TestNewClient(t *testing.T) {
 	}
 	if client.APIKey != "test-key" {
 		t.Errorf("expected APIKey %q, got %q", "test-key", client.APIKey)
+	}
+}
+
+func TestNewClientDefaultTimeout(t *testing.T) {
+	client := NewClient("http://localhost:3000", "test-key", 0)
+	if client.HTTPClient.Timeout.Seconds() != float64(defaultTimeout) {
+		t.Errorf("expected default timeout %d seconds, got %v", defaultTimeout, client.HTTPClient.Timeout)
 	}
 }
 
@@ -89,7 +97,7 @@ func TestSendRequest(t *testing.T) {
 			defer server.Close()
 
 			client := NewClient(server.URL, tt.apiKey, 1)
-			resp, err := client.sendRequest(tt.method, tt.endpoint, tt.requestBody)
+			resp, err := client.sendRequest(context.Background(), tt.method, tt.endpoint, tt.requestBody)
 
 			if tt.expectError {
 				if err == nil {
@@ -109,7 +117,7 @@ func TestSendRequest(t *testing.T) {
 
 func TestSendRequest_BadUrl(t *testing.T) {
 	client := NewClient(":\x7f\x7f\x7f", "secret", 1) // Provide an invalid URL
-	_, err := client.sendRequest("GET", "/test", nil)
+	_, err := client.sendRequest(context.Background(), "GET", "/test", nil)
 	if err == nil {
 		t.Errorf("expected parse error with invalid URL")
 	}
@@ -134,7 +142,7 @@ func TestHealthcheck(t *testing.T) {
 			defer server.Close()
 
 			client := NewClient(server.URL, "secret", 1)
-			err := client.Healthcheck()
+			err := client.Healthcheck(context.Background())
 
 			if tt.expectError && err == nil {
 				t.Errorf("expected error, got nil")

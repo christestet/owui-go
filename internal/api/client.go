@@ -2,11 +2,19 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+)
+
+const (
+	// defaultTimeout is the fallback HTTP client timeout when none is configured.
+	defaultTimeout = 30
+	// maxResponseSize limits response body reads to 10 MB.
+	maxResponseSize = 10 << 20
 )
 
 // Client represents the Open WebUI API client
@@ -18,6 +26,9 @@ type Client struct {
 
 // NewClient creates a new API client abstraction to interact with Open WebUI instances
 func NewClient(baseURL, apiKey string, timeoutSeconds int) *Client {
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = defaultTimeout
+	}
 	return &Client{
 		BaseURL: baseURL,
 		APIKey:  apiKey,
@@ -28,7 +39,7 @@ func NewClient(baseURL, apiKey string, timeoutSeconds int) *Client {
 }
 
 // sendRequest is a helper for sending authenticated HTTP requests to the API
-func (c *Client) sendRequest(method, endpoint string, body interface{}) ([]byte, error) {
+func (c *Client) sendRequest(ctx context.Context, method, endpoint string, body interface{}) ([]byte, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
@@ -38,7 +49,7 @@ func (c *Client) sendRequest(method, endpoint string, body interface{}) ([]byte,
 		bodyReader = bytes.NewReader(jsonBody)
 	}
 
-	req, err := http.NewRequest(method, fmt.Sprintf("%s%s", c.BaseURL, endpoint), bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s%s", c.BaseURL, endpoint), bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -53,7 +64,7 @@ func (c *Client) sendRequest(method, endpoint string, body interface{}) ([]byte,
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -66,7 +77,7 @@ func (c *Client) sendRequest(method, endpoint string, body interface{}) ([]byte,
 }
 
 // Healthcheck calls the /health endpoint to verify the instance is responsive
-func (c *Client) Healthcheck() error {
-	_, err := c.sendRequest("GET", "/health", nil)
+func (c *Client) Healthcheck(ctx context.Context) error {
+	_, err := c.sendRequest(ctx, "GET", "/health", nil)
 	return err
 }

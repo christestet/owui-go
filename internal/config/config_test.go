@@ -55,13 +55,8 @@ func TestConfigLoadAndSave(t *testing.T) {
 		},
 	}
 
-	// Because viper uses mapstructure natively but sometimes struggles with time.Time,
-	// let's explicitly inject a structure instead of map[string]interface
-	viper.Set("active_instance", cfg.ActiveInstance)
-	viper.Set("instances", cfg.Instances)
-
-	// Test Save
-	err = Save()
+	// Test Save via the method (syncs struct fields to viper then writes)
+	err = cfg.Save()
 	if err != nil {
 		t.Fatalf("Save() failed: %v", err)
 	}

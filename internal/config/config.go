@@ -100,8 +100,3 @@ func (c *Config) Save() error {
 	viper.Set("settings", c.Settings)
 	return viper.WriteConfig()
 }
-
-// Save writes the current viper configuration to file
-func Save() error {
-	return viper.WriteConfig()
-}

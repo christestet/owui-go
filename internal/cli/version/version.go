@@ -18,6 +18,6 @@ var Cmd = &cobra.Command{
 	Short: "Print the version number of owui",
 	Long:  `All software has versions. This is owui's`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("owui version %s (commit: %s, built at: %s)\n", Version, Commit, Date)
+		fmt.Fprintf(cmd.OutOrStdout(), "owui version %s (commit: %s, built at: %s)\n", Version, Commit, Date)
 	},
 }

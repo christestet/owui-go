@@ -84,8 +84,15 @@ func validateInstanceInput(name, instanceURL string) error {
 	if instanceURL == "" {
 		return fmt.Errorf("instance URL is required")
 	}
-	if _, err := url.ParseRequestURI(instanceURL); err != nil {
+	u, err := url.ParseRequestURI(instanceURL)
+	if err != nil {
 		return fmt.Errorf("invalid URL %q: %w", instanceURL, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("invalid URL %q: scheme must be http or https", instanceURL)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("invalid URL %q: host is required", instanceURL)
 	}
 	return nil
 }
