@@ -30,6 +30,12 @@ curl -fsSL https://raw.githubusercontent.com/christestet/owui-go/main/scripts/in
 
 The script installs to `~/.local/bin` by default. If this directory is not in your `PATH`, the script will provide instructions on how to add it.
 
+On macOS (`zsh`), the installer also tries to set up shell completion automatically. If your current shell session was already running during install, reload your shell config once:
+
+```sh
+source ~/.zshrc
+```
+
 ### Uninstall
 
 To completely remove `owui` and its configuration:

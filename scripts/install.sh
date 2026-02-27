@@ -109,6 +109,10 @@ fi
 # Install shell completions
 if [ -f "${INSTALL_DIR}/${BINARY}" ]; then
     log "Attempting to install shell completions..."
+    if [ -z "${SHELL}" ] && [ "${OS}" = "darwin" ]; then
+        SHELL="/bin/zsh"
+        export SHELL
+    fi
     # Execute the binary to install completions using its internal logic
     "${INSTALL_DIR}/${BINARY}" completion install --quiet || true
     log "Completions installation attempted. Use '${BINARY} completion --help' for manual setup if needed."
