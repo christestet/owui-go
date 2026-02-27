@@ -22,6 +22,10 @@ func TestHealthCommand(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
+
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")
 	os.MkdirAll(configPath, 0700)
@@ -48,8 +52,8 @@ func TestHealthCommand(t *testing.T) {
 	err = healthCmd.RunE(healthCmd, []string{})
 	if err == nil {
 		t.Errorf("expected error for unreachable instance, got nil")
-	} else if !strings.Contains(err.Error(), "not healthy") {
-		t.Errorf("expected 'not healthy' error, got: %v", err)
+	} else if !strings.Contains(err.Error(), "unhealthy instances") {
+		t.Errorf("expected 'unhealthy instances' error, got: %v", err)
 	}
 }
 
@@ -80,8 +84,8 @@ func TestHealthCommand_NoActiveInstance(t *testing.T) {
 	err = healthCmd.RunE(healthCmd, []string{})
 	if err == nil {
 		t.Errorf("expected error due to missing instance")
-	} else if !strings.Contains(err.Error(), "no instance specified") {
-		t.Errorf("expected missing instance error, got: %v", err)
+	} else if !strings.Contains(err.Error(), "no instances configured") {
+		t.Errorf("expected 'no instances configured' error, got: %v", err)
 	}
 }
 
@@ -97,12 +101,16 @@ func TestHealthCommand_Healthy(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
+
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")
 	os.MkdirAll(configPath, 0700)
-	viper.SetConfigFile(filepath.Join(configPath, "config.json"))
 
 	viper.Reset()
+	viper.SetConfigFile(filepath.Join(configPath, "config.json"))
 	viper.Set("active_instance", "healthy-instance")
 	viper.Set("instances", map[string]interface{}{
 		"healthy-instance": map[string]interface{}{
@@ -137,14 +145,25 @@ func TestHealthCommand_InstanceNotFound(t *testing.T) {
 	viper.SetConfigFile(filepath.Join(configPath, "config.json"))
 
 	viper.Reset()
-	viper.Set("active_instance", "missing-instance")
-	viper.Set("instances", map[string]interface{}{})
+	viper.Set("active_instance", "instance-a")
+	viper.Set("instances", map[string]interface{}{
+		"instance-a": map[string]interface{}{
+			"url":      "http://127.0.0.1:8080",
+			"api_key":  "sk-aaa",
+			"added_at": "2026-01-01T00:00:00Z",
+		},
+	})
 	viper.WriteConfig()
 
 	buf := new(bytes.Buffer)
 	healthCmd.SetOut(buf)
 
-	healthCmd.SetArgs([]string{})
+	// Register the instance flag on the command for test isolation
+	if healthCmd.Flags().Lookup("instance") == nil {
+		healthCmd.Flags().String("instance", "", "")
+	}
+	healthCmd.Flags().Set("instance", "nonexistent-instance")
+	defer healthCmd.Flags().Set("instance", "")
 
 	err = healthCmd.RunE(healthCmd, []string{})
 	if err == nil {
@@ -161,6 +180,10 @@ func TestListCommand(t *testing.T) {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
+
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
 
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")

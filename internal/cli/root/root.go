@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/christestet/owui-go/internal/cli/version"
@@ -52,6 +53,20 @@ func init() {
 	Cmd.PersistentFlags().StringVarP(&instance, "instance", "i", "", "instance name to use (default: active_instance from config)")
 	Cmd.PersistentFlags().StringVarP(&output, "output", "o", "", "output format (pretty or json)")
 	Cmd.PersistentFlags().StringVarP(&filter, "filter", "f", "", "filter results")
+
+	_ = Cmd.RegisterFlagCompletionFunc("instance", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		cfg, err := config.Load()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var comps []string
+		for name := range cfg.Instances {
+			if strings.HasPrefix(name, toComplete) {
+				comps = append(comps, name)
+			}
+		}
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -59,12 +74,23 @@ func initConfig() error {
 	_, err := config.Load()
 	if err != nil {
 		// Just print error, we can still run help commands
-		fmt.Printf("Error loading configuration: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 	}
 	return err
 }
 
+func isCompletionRequest() bool {
+	return len(os.Args) > 1 &&
+		(os.Args[1] == cobra.ShellCompRequestCmd || os.Args[1] == cobra.ShellCompNoDescRequestCmd)
+}
+
 func initConfigCommand() {
+	// Skip config init and background update check during shell completion.
+	// Completion callbacks (ValidArgsFunction, RegisterFlagCompletionFunc)
+	// load config themselves and handle errors gracefully.
+	if isCompletionRequest() {
+		return
+	}
 	_ = initConfig()
 	go backgroundUpdateCheck()
 }
