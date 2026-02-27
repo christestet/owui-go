@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/christestet/owui-go/internal/cli/version"
@@ -52,6 +53,20 @@ func init() {
 	Cmd.PersistentFlags().StringVarP(&instance, "instance", "i", "", "instance name to use (default: active_instance from config)")
 	Cmd.PersistentFlags().StringVarP(&output, "output", "o", "", "output format (pretty or json)")
 	Cmd.PersistentFlags().StringVarP(&filter, "filter", "f", "", "filter results")
+
+	_ = Cmd.RegisterFlagCompletionFunc("instance", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		cfg, err := config.Load()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var comps []string
+		for name := range cfg.Instances {
+			if strings.HasPrefix(name, toComplete) {
+				comps = append(comps, name)
+			}
+		}
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 // initConfig reads in config file and ENV variables if set.
