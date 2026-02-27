@@ -22,6 +22,10 @@ func TestHealthCommand(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
+
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")
 	os.MkdirAll(configPath, 0700)
@@ -97,12 +101,16 @@ func TestHealthCommand_Healthy(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
+
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")
 	os.MkdirAll(configPath, 0700)
-	viper.SetConfigFile(filepath.Join(configPath, "config.json"))
 
 	viper.Reset()
+	viper.SetConfigFile(filepath.Join(configPath, "config.json"))
 	viper.Set("active_instance", "healthy-instance")
 	viper.Set("instances", map[string]interface{}{
 		"healthy-instance": map[string]interface{}{
@@ -172,6 +180,10 @@ func TestListCommand(t *testing.T) {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
+
+	origFunc := config.UserConfigDirFunc
+	config.UserConfigDirFunc = func() (string, error) { return tmpDir, nil }
+	defer func() { config.UserConfigDirFunc = origFunc }()
 
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "owui")

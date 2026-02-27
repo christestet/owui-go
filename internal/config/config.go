@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -65,39 +66,63 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	viper.SetConfigFile(path)
-	viper.SetConfigType("json")
-
-	// Set defaults
-	viper.SetDefault("settings.output_format", "pretty")
-	viper.SetDefault("settings.timeout_seconds", 30)
-	viper.SetDefault("instances", map[string]InstanceConfig{})
-
-	if err := viper.ReadInConfig(); err != nil {
-		if os.IsNotExist(err) {
-			// Write default config if not exists
-			if err := viper.SafeWriteConfig(); err != nil {
-				// We can ignore error here as it will use defaults anyway
-			}
-		} else {
-			return nil, err
-		}
+	// Guard against empty/truncated files left by interrupted writes
+	if info, statErr := os.Stat(path); statErr == nil && info.Size() == 0 {
+		cfg := defaultConfig()
+		_ = cfg.Save() // best-effort: reset file to defaults
+		return cfg, nil
 	}
 
-	var cfg Config
-	err = viper.Unmarshal(&cfg)
-	if err != nil {
+	v := viper.New()
+	v.SetConfigFile(path)
+	v.SetConfigType("json")
+	v.SetDefault("settings.output_format", "pretty")
+	v.SetDefault("settings.timeout_seconds", 30)
+	v.SetDefault("instances", map[string]InstanceConfig{})
+
+	if err := v.ReadInConfig(); err != nil {
+		if os.IsNotExist(err) {
+			cfg := defaultConfig()
+			_ = cfg.Save()
+			return cfg, nil
+		}
 		return nil, err
 	}
 
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
 	return &cfg, nil
+}
+
+func defaultConfig() *Config {
+	return &Config{
+		Settings:  SettingsConfig{OutputFormat: "pretty", TimeoutSeconds: 30},
+		Instances: map[string]InstanceConfig{},
+	}
 }
 
 // Save writes the Config to the configuration file using viper
 func (c *Config) Save() error {
-	viper.Set("cli", c.Cli)
-	viper.Set("active_instance", c.ActiveInstance)
-	viper.Set("instances", c.Instances)
-	viper.Set("settings", c.Settings)
-	return viper.WriteConfig()
+	path, err := ConfigPath()
+	if err != nil {
+		return err
+	}
+
+	v := viper.New()
+	v.SetConfigType("json")
+	v.Set("cli", c.Cli)
+	v.Set("active_instance", c.ActiveInstance)
+	v.Set("instances", c.Instances)
+	v.Set("settings", c.Settings)
+
+	// Atomic write: write to a .tmp.json file then rename (POSIX atomic).
+	// Must share the same directory as path so rename is within one filesystem.
+	// Must end in .json so Viper uses the JSON encoder.
+	tmpPath := filepath.Join(filepath.Dir(path), "config.tmp.json")
+	if err := v.WriteConfigAs(tmpPath); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+	return os.Rename(tmpPath, path)
 }
