@@ -42,11 +42,17 @@ type UpdateUserForm struct {
 
 // Group represents a group in Open WebUI.
 type Group struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	UserIDs     []string `json:"user_ids"`
-	MemberCount *int     `json:"member_count"`
+	ID          string          `json:"id"`
+	UserID      string          `json:"user_id,omitempty"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Data        json.RawMessage `json:"data,omitempty"`
+	Meta        json.RawMessage `json:"meta,omitempty"`
+	Permissions json.RawMessage `json:"permissions,omitempty"`
+	UserIDs     []string        `json:"user_ids"`
+	MemberCount *int            `json:"member_count"`
+	CreatedAt   int64           `json:"created_at,omitempty"`
+	UpdatedAt   int64           `json:"updated_at,omitempty"`
 }
 
 // UserIdsForm is the request body for adding/removing users from a group.

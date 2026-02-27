@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/christestet/owui-go/internal/cli/completion"
+	"github.com/christestet/owui-go/internal/cli/groups"
 	"github.com/christestet/owui-go/internal/cli/instances"
 	"github.com/christestet/owui-go/internal/cli/root"
 	cliUpdate "github.com/christestet/owui-go/internal/cli/update"
@@ -16,6 +17,7 @@ func main() {
 	root.Cmd.AddCommand(completion.Cmd)
 	instances.Register(root.Cmd)
 	users.Register(root.Cmd)
+	groups.Register(root.Cmd)
 
 	// Execute the root command
 	root.Execute()
