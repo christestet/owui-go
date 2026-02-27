@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/christestet/owui-go/internal/cli/completion"
 	"github.com/christestet/owui-go/internal/cli/instances"
 	"github.com/christestet/owui-go/internal/cli/root"
 	cliVersion "github.com/christestet/owui-go/internal/cli/version"
@@ -9,6 +10,7 @@ import (
 func main() {
 	// Register subcommands
 	root.Cmd.AddCommand(cliVersion.Cmd)
+	root.Cmd.AddCommand(completion.Cmd)
 	instances.Register(root.Cmd)
 
 	// Execute the root command
