@@ -62,6 +62,155 @@ owui models list -o json
 
 ---
 
+## Show model details
+
+```bash
+owui models show <model_name|model_id>
+```
+
+This command displays a comprehensive detail view of a single model. Because models carry a lot of information (metadata, status, visibility, capabilities, access grants with resolved group names, owner, timestamps), a plain key-value list would be hard to scan. Instead, the output uses **lipgloss-styled sections** with visual grouping, borders, and color to make the terminal output readable at a glance.
+
+- The positional argument is the model name or id (with tab completion for all model names).
+- Tab completion shows `Name (id)` format for all models.
+- API endpoints used:
+  - `GET /api/v1/models/model?id=<id>` -- fetches `ModelAccessResponse` (includes `access_grants`, `user`, `write_access`)
+  - `GET /api/v1/groups/` -- to resolve `principal_id` UUIDs in access grants to human-readable group names
+
+### Interactive mode
+
+When `owui models show` is called without arguments, an interactive select is shown:
+
+```example terminal output
+$ owui models show
+? Select model (Use arrow keys)
+search: claude
+    Claude Sonnet (claude-sonnet)
+    Custom Assistant (custom-assistant)
+    GPT-4o (gpt-4o)
+```
+
+### Terminal output (lipgloss-styled)
+
+The detail view is rendered in structured sections using `lipgloss` for borders, padding, and color. The layout uses a **card-style** design with distinct visual blocks. This is the target rendering -- implementation uses `lipgloss.NewStyle()` with `Border()`, `Padding()`, `Foreground()`, and `Width()`.
+
+```example terminal output
+$ owui models show claude-sonnet
+
+  Claude Sonnet
+  claude-sonnet
+
+  ── General ─────────────────────────────────────
+  Base Model        anthropic/claude-3.5-sonnet
+  Description       Claude 3.5 Sonnet by Anthropic
+  Owner             admin (admin@example.com)
+  Created           2026-01-15 10:30:00
+  Updated           2026-02-18 14:22:00
+
+  ── Status ──────────────────────────────────────
+  Status            enabled
+  Visibility        private (3 group grants)
+
+  ── Capabilities ────────────────────────────────
+  Vision            yes
+  Citations         yes
+  Code Interpreter  no
+
+  ── Access Grants ───────────────────────────────
+  GROUP             PERMISSION   GRANTED
+  developers        read         2026-01-20
+  backend-team      read         2026-02-01
+  designers         read         2026-02-10
+
+```
+
+#### Layout specification
+
+The output is composed of these visual elements:
+
+1. **Header block**: Model `name` rendered bold/bright, model `id` rendered dim below it. Both left-padded with 2 spaces.
+
+2. **Section dividers**: Each section has a labeled horizontal rule using lipgloss, e.g. `── General ──────...`. The label is rendered with a subtle accent color.
+
+3. **Key-value pairs**: Left column (labels) is right-padded to a fixed width (e.g., 18 chars) and rendered in a muted/dim color. Right column (values) is rendered in the default foreground color. Special values get color treatment:
+   - `enabled` = green, `disabled` = red
+   - `public` = cyan, `private` = yellow
+   - `yes` = green, `no` = dim/gray
+
+4. **Access Grants table**: Rendered as a compact table within the card. Group names are resolved from UUIDs via the groups API. The `GRANTED` column shows the `created_at` timestamp formatted as date. If there are no access grants, show `No access grants -- model is public.` in dim text.
+
+5. **Overall card**: The entire output is wrapped in a lipgloss style with `PaddingLeft(2)` for consistent indentation. No outer border -- the section dividers provide enough visual structure.
+
+#### Adaptive width
+
+The section divider lines adapt to the terminal width (using `lipgloss.Width()` or `term.GetSize()`), capped at a maximum of 60 characters. On narrow terminals the dividers are shorter; the key-value layout remains fixed.
+
+#### Implementation approach
+
+```go
+// Pseudo-code for the rendering approach
+import (
+    "github.com/charmbracelet/lipgloss"
+)
+
+var (
+    titleStyle   = lipgloss.NewStyle().Bold(true).PaddingLeft(2)
+    subtitleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).PaddingLeft(2)
+    labelStyle   = lipgloss.NewStyle().Width(18).Foreground(lipgloss.Color("245")).PaddingLeft(2)
+    valueStyle   = lipgloss.NewStyle()
+    enabledStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))  // green
+    disabledStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // red
+    privateStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // yellow
+    publicStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))  // cyan
+    dividerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).PaddingLeft(2)
+    dimStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+)
+
+func renderSectionDivider(label string, width int) string {
+    prefix := "── " + label + " "
+    remaining := width - len(prefix)
+    return dividerStyle.Render(prefix + strings.Repeat("─", remaining))
+}
+
+func renderKeyValue(label, value string) string {
+    return labelStyle.Render(label) + valueStyle.Render(value)
+}
+```
+
+#### JSON output
+
+```bash
+owui models show claude-sonnet -o json
+```
+
+In JSON mode, the raw `ModelAccessResponse` is printed with `json.MarshalIndent`, plus an added `resolved_groups` field that maps `principal_id` to group name for convenience:
+
+```json
+{
+  "id": "claude-sonnet",
+  "name": "Claude Sonnet",
+  "base_model_id": "anthropic/claude-3.5-sonnet",
+  "is_active": true,
+  "meta": {
+    "description": "Claude 3.5 Sonnet by Anthropic",
+    "capabilities": { "vision": true, "citations": true }
+  },
+  "access_grants": [
+    {
+      "id": "grant-1",
+      "principal_type": "group",
+      "principal_id": "uuid-123",
+      "permission": "read",
+      "resolved_group_name": "developers"
+    }
+  ],
+  "user": { "id": "abc123", "name": "admin", "email": "admin@example.com" },
+  "created_at": 1705312200,
+  "updated_at": 1708265520
+}
+```
+
+---
+
 ## Set status (enable/disable)
 
 ```bash
@@ -349,11 +498,12 @@ Successfully removed model 'Claude Sonnet' from group 'backend-team'
 |---------|-------------|--------|-----------------------|
 | `models list` | `/api/v1/models/list` | GET | Query params: `query`, `view_option`, `tag`, `order_by`, `direction`, `page` |
 | `models list` (for autocomplete) | `/api/v1/models` | GET | Query param: `refresh` (boolean) |
+| `models show` | `/api/v1/models/model` | GET | Query param: `id` (model ID) |
+| `models show` (resolve groups) | `/api/v1/groups/` | GET | -- |
 | `models set-status` | `/api/v1/models/model/toggle` | POST | Query param: `id` (model ID) |
 | `models set-visibility` | `/api/v1/models/model/access/update` | POST | `ModelAccessGrantsForm`: `{id, name?, access_grants[]}` |
 | `models add-to-group` | `/api/v1/models/model/access/update` | POST | `ModelAccessGrantsForm`: `{id, name?, access_grants[]}` |
 | `models remove-from-group` | `/api/v1/models/model/access/update` | POST | `ModelAccessGrantsForm`: `{id, name?, access_grants[]}` |
-| (get model detail) | `/api/v1/models/model` | GET | Query param: `id` (model ID) |
 
 ---
 
@@ -449,6 +599,7 @@ Output format can be set with `--output` or `-o` flag (`pretty` or `json`). Defa
   - `set-status disable`: Only enabled models (`is_active: true`) are shown.
   - `set-visibility public`: Only private models (non-empty `access_grants`) are shown.
   - `set-visibility private`: Only public models (empty `access_grants`) are shown.
+  - `show`: All models are shown.
   - `remove-from-group`: Only models with at least one access grant (private models) are shown.
   - `add-to-group`: All models are shown.
   - Multiple model name arguments: Already-selected names are excluded from subsequent completions.
