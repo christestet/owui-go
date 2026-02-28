@@ -25,8 +25,9 @@ This command lists all models in Open WebUI with their name, id, base model, sta
 - The `--tag` flag filters models by tag.
 - The `status` column shows `enabled` or `disabled` based on `is_active`.
 - The `visibility` column shows `public` or `private` based on whether `access_grants` is empty or not.
-- API endpoint: `GET /api/v1/models/list` (paginated, returns `ModelAccessListResponse`)
-- For tab completion and internal lookups we use `GET /api/v1/models` (returns all models, useful for autocomplete).
+- API endpoint: `GET /api/v1/models/list` (paginated, returns `ModelAccessListResponse`).
+- **Pagination:** The list endpoint is paginated with a `page` query param (default: 1) but exposes **no `limit`/`page_size` parameter** -- the server controls page size. The response contains `items` (array) and `total` (int). To retrieve all models, auto-pagination is required (see Implementation notes below).
+- For tab completion and all internal lookups (smart filtering by `is_active`/`access_grants`), we also use the paginated `/api/v1/models/list` endpoint with auto-pagination. **Do NOT use `GET /api/v1/models`** -- its response schema is untyped (`{}`) in the OpenAPI spec and may not include `access_grants` or `is_active` fields needed for smart completion filtering.
 
 ```example terminal output
 $ owui models list
@@ -496,14 +497,15 @@ Successfully removed model 'Claude Sonnet' from group 'backend-team'
 
 | Command | API Endpoint | Method | Request Body / Params |
 |---------|-------------|--------|-----------------------|
-| `models list` | `/api/v1/models/list` | GET | Query params: `query`, `view_option`, `tag`, `order_by`, `direction`, `page` |
-| `models list` (for autocomplete) | `/api/v1/models` | GET | Query param: `refresh` (boolean) |
+| `models list` + autocomplete | `/api/v1/models/list` | GET | Query params: `query`, `view_option`, `tag`, `order_by`, `direction`, `page` (paginated -- requires auto-pagination) |
 | `models show` | `/api/v1/models/model` | GET | Query param: `id` (model ID) |
 | `models show` (resolve groups) | `/api/v1/groups/` | GET | -- |
 | `models set-status` | `/api/v1/models/model/toggle` | POST | Query param: `id` (model ID) |
 | `models set-visibility` | `/api/v1/models/model/access/update` | POST | `ModelAccessGrantsForm`: `{id, name?, access_grants[]}` |
 | `models add-to-group` | `/api/v1/models/model/access/update` | POST | `ModelAccessGrantsForm`: `{id, name?, access_grants[]}` |
 | `models remove-from-group` | `/api/v1/models/model/access/update` | POST | `ModelAccessGrantsForm`: `{id, name?, access_grants[]}` |
+
+**Note:** `GET /api/v1/models` exists but has an untyped response schema (`{}`) in the OpenAPI spec. It is intended for the chat UI and may return a different/merged format. Do not use it for CLI operations -- use `/api/v1/models/list` with auto-pagination instead.
 
 ---
 
@@ -594,7 +596,7 @@ Output format can be set with `--output` or `-o` flag (`pretty` or `json`). Defa
 
 ## Autocomplete behavior
 
-- **Model name autocomplete:** All commands that accept a model name provide shell autocomplete by fetching models from the active instance API (`GET /api/v1/models`).
+- **Model name autocomplete:** All commands that accept a model name provide shell autocomplete by fetching all models via auto-paginated `GET /api/v1/models/list` (see auto-pagination implementation below). This endpoint returns `ModelAccessResponse` objects which include `is_active` and `access_grants` -- both required for smart filtering.
   - `set-status enable`: Only disabled models (`is_active: false`) are shown.
   - `set-status disable`: Only enabled models (`is_active: true`) are shown.
   - `set-visibility public`: Only private models (non-empty `access_grants`) are shown.
@@ -624,6 +626,26 @@ When adding or removing groups from a model, the flow is:
 ### Model identification
 
 Models are identified by their `id` field (e.g., `gpt-4o`, `claude-sonnet`). The `name` field is a human-readable display name. In autocomplete and interactive selectors, both are shown as `Name (id)` for clarity. Positional arguments and `--model`/`--models` flags accept the model **id**.
+
+### Auto-pagination (critical)
+
+The `GET /api/v1/models/list` endpoint is paginated. The `page` query param selects the page (default: 1). The response contains `items` (array of `ModelAccessResponse`) and `total` (int). There is **no `limit`/`page_size` parameter** -- the server controls page size.
+
+To retrieve **all** models (for list display and autocomplete), implement the same auto-pagination pattern used by `ListUsersWithOptions` in `internal/api/users.go`:
+
+1. Fetch page 1 to learn the server's page size (`pageSize = len(items)`) and `total`.
+2. If `len(items) >= total`, all models fit on one page -- return immediately.
+3. Calculate `totalPages = ceil(total / pageSize)`, cap at `maxPages = 100`.
+4. Fetch remaining pages (2..totalPages) **in parallel** using goroutines.
+5. Merge all pages into a single slice.
+
+```go
+// Reference: internal/api/users.go:68-135 (ListUsersWithOptions)
+// The models implementation should follow the exact same structure,
+// substituting ModelAccessResponse for User and ModelAccessListResponse for UserListResponse.
+```
+
+This ensures `owui models list` and all autocomplete functions see the complete model set regardless of how many models exist in the instance.
 
 ### Group resolution
 
