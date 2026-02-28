@@ -4,8 +4,6 @@
 [![CI](https://github.com/christestet/owui-go/actions/workflows/ci.yml/badge.svg)](https://github.com/christestet/owui-go/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A fast and flexible CLI written in Go for managing multiple [Open WebUI](https://github.com/open-webui/open-webui) instances.
-
 This tool helps you seamlessly switch between and manage different instances of [Open WebUI](https://github.com/open-webui/open-webui) — an awesome open-source project that provides a user-friendly interface for interacting with various LLMs.
 
 Single binary, cross-platform (Linux/macOS, amd64/arm64).
