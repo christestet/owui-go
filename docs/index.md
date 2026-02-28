@@ -14,6 +14,10 @@ owui instances add
 # List users
 owui users list
 
+# List and manage models
+owui models list
+owui models show claude-sonnet
+
 # Check instance health
 owui instances health
 ```
@@ -25,6 +29,7 @@ owui instances health
 | `owui instances` | Manage Open WebUI instances |
 | `owui users` | Manage users |
 | `owui groups` | Manage groups |
+| `owui models` | Manage models (list, show, enable/disable, visibility, group access) |
 | `owui completion` | Generate shell completions |
 | `owui update` | Update owui to the latest version |
 | `owui version` | Print version information |
