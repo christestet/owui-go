@@ -14,3 +14,9 @@ go.work.sum
 coverage.out
 
 bin/
+
+# Auto-generated CLI docs (built in CI)
+docs/cli/
+
+# MkDocs build output
+site/
