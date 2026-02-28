@@ -1,4 +1,4 @@
-name: Build and Deploy MkDocs
+name: Build and Deploy Docs
 
 on:
   push:
@@ -38,11 +38,11 @@ jobs:
       - name: Generate Cobra CLI Docs
         run: go run ./internal/tools/docgen -out ./docs/cli -format markdown -frontmatter
 
-      - name: Install MkDocs & Material Theme
-        run: pip install mkdocs-material
+      - name: Install Zensical
+        run: pip install zensical
 
-      - name: Build MkDocs Site
-        run: mkdocs build
+      - name: Build Docs
+        run: zensical build
 
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3
