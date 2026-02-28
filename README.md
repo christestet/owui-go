@@ -12,6 +12,9 @@ Single binary, cross-platform (Linux/macOS, amd64/arm64).
 
 - Manage multiple [Open WebUI](https://github.com/open-webui/open-webui) instances (add, remove, switch, list)
 - Health checking of instances
+- Manage users (list, create, remove, update roles, group membership)
+- Manage groups (list, add, remove, update, members)
+- Manage models (list, show details, enable/disable, set visibility, group access)
 - Interactive TUI wizards for adding instances
 - JSON and pretty-printed table output formats
 - Shell completions (bash, zsh, fish, powershell)
@@ -98,6 +101,26 @@ owui instances health
 
 # Remove an instance
 owui instances remove work
+
+# List all models
+owui models list
+
+# Show model details
+owui models show claude-sonnet
+
+# Enable/disable models
+owui models set-status enable llama-3.1
+owui models set-status disable gpt-4o
+
+# Change model visibility
+owui models set-visibility public claude-sonnet
+owui models set-visibility private gpt-4o
+
+# Add a model to groups
+owui models add-to-group --model gpt-4o --groups developers backend-team
+
+# Remove a model from groups
+owui models remove-from-group claude-sonnet --groups designers
 
 # Install shell completions (bash/zsh/fish)
 owui completion install

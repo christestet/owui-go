@@ -4,6 +4,7 @@ import (
 	"github.com/christestet/owui-go/internal/cli/completion"
 	"github.com/christestet/owui-go/internal/cli/groups"
 	"github.com/christestet/owui-go/internal/cli/instances"
+	"github.com/christestet/owui-go/internal/cli/models"
 	cliUpdate "github.com/christestet/owui-go/internal/cli/update"
 	"github.com/christestet/owui-go/internal/cli/users"
 	cliVersion "github.com/christestet/owui-go/internal/cli/version"
@@ -18,4 +19,5 @@ func RegisterAll(root *cobra.Command) {
 	instances.Register(root)
 	users.Register(root)
 	groups.Register(root)
+	models.Register(root)
 }
