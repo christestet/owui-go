@@ -24,6 +24,10 @@ Do not assume project structure or testing conventions; read these referenced fi
 Instead of duplicating code instructions, refer directly to the source of truth in the codebase:
 - **Configuration Management**: See `internal/config/config.go` for JSON structure, defaults, and OS-specific path resolution (e.g., `~/.config/owui/config.json` vs `~/Library/Application Support/owui/config.json`).
 - **CLI Commands**: See `internal/cli/` to understand command structure and flags. Most commands use standard flags like `-i` (instance), `-o` (output), and `-f` (filter).
+- **CLI Docs Generation**:
+  - `make docs-readme` regenerates the CLI command reference block in `README.md` from Cobra command definitions (`internal/tools/readmegen`).
+  - `make docs-cli` regenerates markdown CLI reference pages under `docs/cli` (`internal/tools/docgen`).
+  - `make docs-readme-check` is the CI guard and must pass; it fails if `README.md` is out of sync with the Cobra command tree.
 - **Release Process**: Handled via standard GitHub Actions on `main` branch pushes to tags (`v*`). We use conventional commits. Develop on `dev` and open PRs to `main`.
 
 ## Hard Rules
