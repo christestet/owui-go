@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: build test lint clean run typecheck deps
+.PHONY: build test lint clean run typecheck deps docs-cli docs-readme docs-readme-check docs
 
 # Variables
 BINARY_NAME=owui
@@ -38,3 +38,14 @@ lint:
 
 typecheck:
 	$(GO) tool type-check ./...
+
+docs-cli:
+	$(GO) run ./internal/tools/docgen -out ./docs/cli -format markdown -frontmatter
+
+docs-readme:
+	$(GO) run ./internal/tools/readmegen -readme ./README.md
+
+docs-readme-check: docs-readme
+	git diff --exit-code -- README.md
+
+docs: docs-cli docs-readme

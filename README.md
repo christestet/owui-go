@@ -132,6 +132,60 @@ owui update
 owui version
 ```
 
+<!-- BEGIN:CLI_COMMANDS -->
+
+### CLI Command Reference (auto-generated)
+
+Run `make docs-readme` to refresh this section.
+
+| Command | Description |
+| --- | --- |
+| `owui` | owui is a CLI to manage Open WebUI instances |
+| `owui completion` | Generate completion script |
+| `owui completion install` | Install completion script for the current shell |
+| `owui groups` | Manage groups in an Open WebUI instance |
+| `owui groups add` | Create a new group |
+| `owui groups add-users` | Add user(s) to a group |
+| `owui groups list` | List all groups |
+| `owui groups members` | Show group details and members |
+| `owui groups remove` | Remove one or more groups |
+| `owui groups remove-users` | Remove user(s) from a group |
+| `owui groups update` | Update a group's name, description, or permissions |
+| `owui instances` | Manage Open WebUI instances |
+| `owui instances add` | Add a new instance |
+| `owui instances health` | Check the health of all instances or a specified instance |
+| `owui instances list` | List all instances |
+| `owui instances remove` | Remove an instance |
+| `owui instances use` | Switch the active instance |
+| `owui models` | Manage models in an Open WebUI instance |
+| `owui models add-to-group` | Add model(s) to group(s) |
+| `owui models list` | List all models |
+| `owui models remove-from-group` | Remove a model from group(s) |
+| `owui models set-status` | Enable or disable models |
+| `owui models set-visibility` | Set model visibility to public or private |
+| `owui models show` | Show model details |
+| `owui pipelines` | Manage pipelines and valves in an Open WebUI instance |
+| `owui pipelines add` | Add a pipeline registration |
+| `owui pipelines list` | List pipeline registrations and pipes |
+| `owui pipelines remove` | Remove a pipeline registration |
+| `owui pipelines show` | Show details for a pipe |
+| `owui pipelines upload` | Upload a pipeline file |
+| `owui pipelines valves` | Manage pipe valves |
+| `owui pipelines valves show` | Show current valves for a pipe |
+| `owui pipelines valves spec` | Show valves spec for a pipe |
+| `owui pipelines valves update` | Update valves for a pipe |
+| `owui update` | Update owui to the latest version |
+| `owui users` | Manage users in an Open WebUI instance |
+| `owui users add-to-group` | Add user(s) to a group |
+| `owui users create` | Create a new user |
+| `owui users list` | List all users |
+| `owui users remove` | Remove a user |
+| `owui users remove-from-group` | Remove user(s) from a group |
+| `owui users update-role` | Update a user's role |
+| `owui version` | Print the version number of owui |
+
+<!-- END:CLI_COMMANDS -->
+
 ### Global flags
 
 | Flag                | Short | Description                                       |
