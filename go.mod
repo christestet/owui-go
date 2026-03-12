@@ -3,7 +3,7 @@ module github.com/christestet/owui-go
 go 1.26.0
 
 require (
-	github.com/charmbracelet/huh v0.8.0
+	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creativeprojects/go-selfupdate v1.5.2
 	github.com/spf13/cobra v1.10.2
