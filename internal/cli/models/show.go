@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -81,15 +82,12 @@ var showCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: modelCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		var modelID string
 		if len(args) > 0 {
@@ -108,9 +106,9 @@ var showCmd = &cobra.Command{
 			for _, m := range allModels {
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", m.Name, m.ID), m.ID))
 			}
-			err = runSearchableSelect("Select model", options, &modelID)
+			err = prompts.RunSearchableSelect("Select model", options, &modelID)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 

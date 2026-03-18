@@ -1,11 +1,11 @@
 package pipelines
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"text/tabwriter"
 
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -14,15 +14,12 @@ var listCmd = &cobra.Command{
 	Short:   "List pipeline registrations and pipes",
 	Aliases: []string{"ls"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		inv, err := buildInventory(ctx, client, cmd.ErrOrStderr())
 		if err != nil {

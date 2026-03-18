@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -19,15 +21,12 @@ var removeFromGroupCmd = &cobra.Command{
 		return isPrivate(m) // Only show models with access grants
 	}),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		allModels, err := client.ListModels(ctx)
 		if err != nil {
@@ -65,9 +64,9 @@ var removeFromGroupCmd = &cobra.Command{
 				label := fmt.Sprintf("%s (%s) [%d groups]", m.Name, m.ID, len(m.AccessGrants))
 				options = append(options, huh.NewOption(label, m.ID))
 			}
-			err := runSearchableSelect("Select model", options, &modelID)
+			err := prompts.RunSearchableSelect("Select model", options, &modelID)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -108,9 +107,9 @@ var removeFromGroupCmd = &cobra.Command{
 			for _, a := range assigned {
 				options = append(options, huh.NewOption(a.name, a.name))
 			}
-			err := runSearchableMultiSelect("Select groups to revoke access", options, &selectedGroupNames)
+			err := prompts.RunSearchableMultiSelect("Select groups to revoke access", options, &selectedGroupNames)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -135,13 +134,9 @@ var removeFromGroupCmd = &cobra.Command{
 			}
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", "))).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", ")))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
@@ -206,7 +201,7 @@ func init() {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		// Smart completion: only show groups the model is assigned to
-		client := resolveClientForCompletion()
+		client := shared.ResolveClientForCompletion()
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}

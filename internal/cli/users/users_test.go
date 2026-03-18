@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/christestet/owui-go/internal/config"
 	"github.com/spf13/viper"
 )
@@ -559,7 +560,7 @@ func TestFindUserByName(t *testing.T) {
 	}
 
 	t.Run("found", func(t *testing.T) {
-		u, err := findUserByName(users, "bob")
+		u, err := shared.FindUserByName(users, "bob")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -569,7 +570,7 @@ func TestFindUserByName(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := findUserByName(users, "nobody")
+		_, err := shared.FindUserByName(users, "nobody")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -604,8 +605,8 @@ func TestIsOAuthGroup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isOAuthGroup(tt.group); got != tt.expected {
-				t.Errorf("isOAuthGroup(%q) = %v, want %v", tt.group.Description, got, tt.expected)
+			if got := shared.IsOAuthGroup(tt.group); got != tt.expected {
+				t.Errorf("shared.IsOAuthGroup(%q) = %v, want %v", tt.group.Description, got, tt.expected)
 			}
 		})
 	}
@@ -618,7 +619,7 @@ func TestFilterLocalGroups(t *testing.T) {
 		{ID: "g3", Name: "designers", Description: "Design team"},
 	}
 
-	local := filterLocalGroups(groups)
+	local := shared.FilterLocalGroups(groups)
 	if len(local) != 2 {
 		t.Fatalf("expected 2 local groups, got %d", len(local))
 	}
@@ -637,7 +638,7 @@ func TestFilterUsersByRole(t *testing.T) {
 		{ID: "u4", Name: "diana", Role: "pending"},
 	}
 
-	filtered := filterUsersByRole(users, "user")
+	filtered := shared.FilterUsersByRole(users, "user")
 	if len(filtered) != 2 {
 		t.Fatalf("expected 2 users with role 'user', got %d", len(filtered))
 	}
@@ -655,7 +656,7 @@ func TestFindGroupByName(t *testing.T) {
 	}
 
 	t.Run("found", func(t *testing.T) {
-		g, err := findGroupByName(groups, "designers")
+		g, err := shared.FindGroupByName(groups, "designers")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -665,7 +666,7 @@ func TestFindGroupByName(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := findGroupByName(groups, "nonexistent")
+		_, err := shared.FindGroupByName(groups, "nonexistent")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

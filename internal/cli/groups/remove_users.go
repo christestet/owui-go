@@ -1,12 +1,13 @@
 package groups
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -15,15 +16,12 @@ var removeUsersCmd = &cobra.Command{
 	Short: "Remove user(s) from a group",
 	Args:  cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		allUsers, err := client.ListUsers(ctx)
 		if err != nil {
@@ -34,7 +32,7 @@ var removeUsersCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		localGroups := filterLocalGroups(groups)
+		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
@@ -48,13 +46,13 @@ var removeUsersCmd = &cobra.Command{
 			for _, g := range localGroups {
 				groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
 			}
-			err := runSearchableSelect("Select group", groupOptions, &groupName)
+			err := prompts.RunSearchableSelect("Select group", groupOptions, &groupName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := findGroupByName(localGroups, groupName)
+		group, err := shared.FindGroupByName(localGroups, groupName)
 		if err != nil {
 			return err
 		}
@@ -106,9 +104,9 @@ var removeUsersCmd = &cobra.Command{
 			for _, u := range groupUsers {
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
 			}
-			err := runSearchableMultiSelect("Select users to remove from group", options, &selectedNames)
+			err := prompts.RunSearchableMultiSelect("Select users to remove from group", options, &selectedNames)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -121,7 +119,7 @@ var removeUsersCmd = &cobra.Command{
 		var userIDs []string
 		var resolvedNames []string
 		for _, name := range selectedNames {
-			u, err := findUserByName(groupUsers, name)
+			u, err := shared.FindUserByName(groupUsers, name)
 			if err != nil {
 				return err
 			}
@@ -129,13 +127,9 @@ var removeUsersCmd = &cobra.Command{
 			resolvedNames = append(resolvedNames, u.Name)
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

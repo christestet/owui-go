@@ -1,13 +1,14 @@
 package groups
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"text/tabwriter"
 	"time"
 
 	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -18,15 +19,12 @@ var membersCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: allGroupCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		groups, err := client.ListGroups(ctx)
 		if err != nil {
@@ -46,13 +44,13 @@ var membersCmd = &cobra.Command{
 			for _, g := range groups {
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", g.Name, groupType(g)), g.Name))
 			}
-			err := runSearchableSelect("Select group", options, &groupName)
+			err := prompts.RunSearchableSelect("Select group", options, &groupName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := findGroupByName(groups, groupName)
+		group, err := shared.FindGroupByName(groups, groupName)
 		if err != nil {
 			return err
 		}

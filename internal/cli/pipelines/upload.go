@@ -1,13 +1,14 @@
 package pipelines
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -15,15 +16,12 @@ var uploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload a pipeline file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		filePath, _ := cmd.Flags().GetString("file")
 		interactive := false
@@ -31,7 +29,7 @@ var uploadCmd = &cobra.Command{
 			interactive = true
 			err := huh.NewInput().Title("Path to pipeline file").Value(&filePath).Run()
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 		if filePath == "" {
@@ -50,13 +48,9 @@ var uploadCmd = &cobra.Command{
 		if !cmd.Flags().Changed("url-idx") {
 			customSet := false
 			if interactive {
-				var custom bool
-				err := huh.NewConfirm().
-					Title("Use custom urlIdx?").
-					Value(&custom).
-					Run()
+				custom, err := prompts.ConfirmYN("Use custom urlIdx?")
 				if err != nil {
-					return wrapInteractiveCancelled(err)
+					return err
 				}
 				if custom {
 					idxText := ""
@@ -65,7 +59,7 @@ var uploadCmd = &cobra.Command{
 						Value(&idxText).
 						Run()
 					if err != nil {
-						return wrapInteractiveCancelled(err)
+						return prompts.WrapInteractiveCancelled(err)
 					}
 					parsed, err := strconv.Atoi(idxText)
 					if err != nil {
