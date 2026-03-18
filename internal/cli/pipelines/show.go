@@ -1,13 +1,14 @@
 package pipelines
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -17,15 +18,12 @@ var showCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: pipeCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		inv, err := buildInventory(ctx, client, nil)
 		if err != nil {
@@ -52,9 +50,9 @@ var showCmd = &cobra.Command{
 				label := fmt.Sprintf("%s (%s / idx=%d)", p.PipeID, p.RegistrationID, p.URLIdx)
 				options = append(options, huh.NewOption(label, fmt.Sprintf("%s|%d", p.PipeID, p.URLIdx)))
 			}
-			err := runSearchableSelect("Select pipe", options, &selected)
+			err := prompts.RunSearchableSelect("Select pipe", options, &selected)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 			parts := strings.SplitN(selected, "|", 2)
 			if len(parts) != 2 {

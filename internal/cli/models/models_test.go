@@ -102,9 +102,9 @@ func newModelsServer(t *testing.T) *httptest.Server {
 						Meta: api.ModelMeta{
 							Description: "Claude 3.5 Sonnet",
 							Capabilities: api.ModelCapabilities{
-								boolPtr(true),
-								boolPtr(true),
-								boolPtr(false),
+								Vision:          boolPtr(true),
+								Citations:       boolPtr(true),
+								CodeInterpreter: boolPtr(false),
 							},
 						},
 						User:      &api.ModelUser{ID: "u1", Name: "admin", Email: "admin@example.com"},
@@ -140,7 +140,7 @@ func newModelsServer(t *testing.T) *httptest.Server {
 					},
 					Meta: api.ModelMeta{
 						Description:  "Claude 3.5 Sonnet by Anthropic",
-						Capabilities: api.ModelCapabilities{boolPtr(true), boolPtr(true), boolPtr(false)},
+						Capabilities: api.ModelCapabilities{Vision: boolPtr(true), Citations: boolPtr(true), CodeInterpreter: boolPtr(false)},
 					},
 					User:      &api.ModelUser{ID: "u1", Name: "admin", Email: "admin@example.com"},
 					UpdatedAt: 1708265520, CreatedAt: 1705312200,

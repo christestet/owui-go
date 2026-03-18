@@ -9,18 +9,17 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
 func resolveTargetPipe(cmd *cobra.Command, args []string) (*apiPipeTarget, error) {
-	client, err := resolveClient(cmd)
+	client, err := shared.ResolveClient(cmd)
 	if err != nil {
 		return nil, err
 	}
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx := shared.CmdContext(cmd)
 	inv, err := buildInventory(ctx, client, nil)
 	if err != nil {
 		return nil, err
@@ -45,9 +44,9 @@ func resolveTargetPipe(cmd *cobra.Command, args []string) (*apiPipeTarget, error
 			label := fmt.Sprintf("%s (%s / idx=%d)", p.PipeID, p.RegistrationID, p.URLIdx)
 			options = append(options, huh.NewOption(label, fmt.Sprintf("%s|%d", p.PipeID, p.URLIdx)))
 		}
-		err := runSearchableSelect("Select pipe", options, &selected)
+		err := prompts.RunSearchableSelect("Select pipe", options, &selected)
 		if err != nil {
-			return nil, wrapInteractiveCancelled(err)
+			return nil, prompts.WrapInteractiveCancelled(err)
 		}
 		parts := strings.SplitN(selected, "|", 2)
 		if len(parts) != 2 {
@@ -128,7 +127,7 @@ var valvesUpdateCmd = &cobra.Command{
 				Value(&dataText).
 				Run()
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -140,13 +139,9 @@ var valvesUpdateCmd = &cobra.Command{
 			return fmt.Errorf("invalid --data JSON: expected object")
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm updating valves for pipe '%s' (urlIdx=%d)?", target.pipe.PipeID, target.pipe.URLIdx)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating valves for pipe '%s' (urlIdx=%d)?", target.pipe.PipeID, target.pipe.URLIdx))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

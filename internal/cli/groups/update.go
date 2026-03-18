@@ -1,13 +1,14 @@
 package groups
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -17,21 +18,18 @@ var updateCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: localGroupCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		groups, err := client.ListGroups(ctx)
 		if err != nil {
 			return err
 		}
-		localGroups := filterLocalGroups(groups)
+		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
@@ -46,13 +44,13 @@ var updateCmd = &cobra.Command{
 			for _, g := range localGroups {
 				options = append(options, huh.NewOption(g.Name, g.Name))
 			}
-			err := runSearchableSelect("Select group to update", options, &groupName)
+			err := prompts.RunSearchableSelect("Select group to update", options, &groupName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := findGroupByName(localGroups, groupName)
+		group, err := shared.FindGroupByName(localGroups, groupName)
 		if err != nil {
 			return err
 		}
@@ -71,7 +69,7 @@ var updateCmd = &cobra.Command{
 		flagsProvided := cmd.Flags().Changed("name") || cmd.Flags().Changed("description") || cmd.Flags().Changed("permissions")
 		if !flagsProvided {
 			if err := runUpdateWizard(fullGroup, &newName, &newDescription, &permissionsStr); err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -99,13 +97,9 @@ var updateCmd = &cobra.Command{
 			Permissions: permissions,
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm updating group '%s'?", group.Name)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating group '%s'?", group.Name))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
@@ -145,8 +139,8 @@ func runUpdateWizard(group *api.Group, name, description, permissions *string) e
 		return err
 	}
 
-	var setPermissions bool
-	if err := huh.NewConfirm().Title("Update permissions?").Value(&setPermissions).Run(); err != nil {
+	setPermissions, err := prompts.ConfirmYN("Update permissions?")
+	if err != nil {
 		return err
 	}
 

@@ -1,13 +1,14 @@
 package pipelines
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -18,14 +19,11 @@ var removeCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: registrationCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		inv, err := buildInventory(ctx, client, nil)
 		if err != nil {
@@ -52,9 +50,9 @@ var removeCmd = &cobra.Command{
 				label := fmt.Sprintf("%s (idx=%d, %s)", r.RegistrationID, r.URLIdx, r.URL)
 				options = append(options, huh.NewOption(label, fmt.Sprintf("%s|%d", r.RegistrationID, r.URLIdx)))
 			}
-			err := runSearchableSelect("Select registration to delete", options, &selected)
+			err := prompts.RunSearchableSelect("Select registration to delete", options, &selected)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 			parts := strings.SplitN(selected, "|", 2)
 			if len(parts) != 2 {
@@ -73,13 +71,9 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm deleting registration '%s' (urlIdx=%d)?", reg.RegistrationID, reg.URLIdx)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm deleting registration '%s' (urlIdx=%d)?", reg.RegistrationID, reg.URLIdx))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

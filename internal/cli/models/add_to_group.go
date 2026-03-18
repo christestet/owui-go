@@ -1,12 +1,13 @@
 package models
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -19,15 +20,12 @@ Two modes:
   --model <name> --groups <g1> [g2 ...]    (one model to multiple groups)
   --models <m1> [m2 ...] --group <name>    (multiple models to one group)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		allModels, err := client.ListModels(ctx)
 		if err != nil {
@@ -38,7 +36,7 @@ Two modes:
 		if err != nil {
 			return err
 		}
-		localGroups := filterLocalGroups(allGroups)
+		localGroups := shared.FilterLocalGroups(allGroups)
 
 		if len(localGroups) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
@@ -64,9 +62,9 @@ Two modes:
 				huh.NewOption("Add one model to multiple groups", "one-to-many"),
 				huh.NewOption("Add multiple models to one group", "many-to-one"),
 			}
-			err := runSearchableSelect("Select mode", modeOptions, &mode)
+			err := prompts.RunSearchableSelect("Select mode", modeOptions, &mode)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 
 			if mode == "one-to-many" {
@@ -76,9 +74,9 @@ Two modes:
 					modelOptions = append(modelOptions, huh.NewOption(fmt.Sprintf("%s (%s)", m.Name, m.ID), m.ID))
 				}
 				var selectedModel string
-				err := runSearchableSelect("Select model", modelOptions, &selectedModel)
+				err := prompts.RunSearchableSelect("Select model", modelOptions, &selectedModel)
 				if err != nil {
-					return wrapInteractiveCancelled(err)
+					return prompts.WrapInteractiveCancelled(err)
 				}
 				modelIDs = []string{selectedModel}
 
@@ -87,9 +85,9 @@ Two modes:
 				for _, g := range localGroups {
 					groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
 				}
-				err = runSearchableMultiSelect("Select groups to grant access", groupOptions, &groupNames)
+				err = prompts.RunSearchableMultiSelect("Select groups to grant access", groupOptions, &groupNames)
 				if err != nil {
-					return wrapInteractiveCancelled(err)
+					return prompts.WrapInteractiveCancelled(err)
 				}
 			} else {
 				// Select multiple models
@@ -97,9 +95,9 @@ Two modes:
 				for _, m := range allModels {
 					modelOptions = append(modelOptions, huh.NewOption(fmt.Sprintf("%s (%s)", m.Name, m.ID), m.ID))
 				}
-				err := runSearchableMultiSelect("Select models to add", modelOptions, &modelIDs)
+				err := prompts.RunSearchableMultiSelect("Select models to add", modelOptions, &modelIDs)
 				if err != nil {
-					return wrapInteractiveCancelled(err)
+					return prompts.WrapInteractiveCancelled(err)
 				}
 
 				// Select one group
@@ -108,9 +106,9 @@ Two modes:
 					groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
 				}
 				var selectedGroup string
-				err = runSearchableSelect("Select group", groupOptions, &selectedGroup)
+				err = prompts.RunSearchableSelect("Select group", groupOptions, &selectedGroup)
 				if err != nil {
-					return wrapInteractiveCancelled(err)
+					return prompts.WrapInteractiveCancelled(err)
 				}
 				groupNames = []string{selectedGroup}
 			}
@@ -146,7 +144,7 @@ Two modes:
 		// Resolve groups
 		var resolvedGroups []api.Group
 		for _, name := range groupNames {
-			g, err := findGroupByName(localGroups, name)
+			g, err := shared.FindGroupByName(localGroups, name)
 			if err != nil {
 				return err
 			}
@@ -170,13 +168,9 @@ Two modes:
 			confirmMsg = fmt.Sprintf("Confirm adding %d model(s) to group '%s': %s?", len(resolvedModels), resolvedGroups[0].Name, strings.Join(modelNames, ", "))
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(confirmMsg).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(confirmMsg)
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

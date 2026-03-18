@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"sync"
 )
 
 // User represents a user in Open WebUI.
@@ -69,9 +68,7 @@ type UserListOptions struct {
 // Page 1 is fetched first to determine the total; remaining pages are fetched
 // in parallel using goroutines. If opts is nil, no filtering is applied.
 func (c *Client) ListUsersWithOptions(ctx context.Context, opts *UserListOptions) ([]User, error) {
-	const maxPages = 100
-
-	fetchPage := func(page int) (UserListResponse, error) {
+	return fetchAllPages(func(page int) ([]User, int, error) {
 		params := url.Values{}
 		params.Set("page", strconv.Itoa(page))
 		if opts != nil && opts.Query != "" {
@@ -80,58 +77,14 @@ func (c *Client) ListUsersWithOptions(ctx context.Context, opts *UserListOptions
 		endpoint := "/api/v1/users/?" + params.Encode()
 		body, err := c.sendRequest(ctx, "GET", endpoint, nil)
 		if err != nil {
-			return UserListResponse{}, fmt.Errorf("listing users (page %d): %w", page, err)
+			return nil, 0, fmt.Errorf("listing users (page %d): %w", page, err)
 		}
 		var resp UserListResponse
 		if err := json.Unmarshal(body, &resp); err != nil {
-			return UserListResponse{}, fmt.Errorf("decoding users response: %w", err)
+			return nil, 0, fmt.Errorf("decoding users response: %w", err)
 		}
-		return resp, nil
-	}
-
-	// Fetch page 1 to learn the total and page size.
-	first, err := fetchPage(1)
-	if err != nil {
-		return nil, err
-	}
-	if len(first.Users) == 0 || len(first.Users) >= first.Total {
-		return first.Users, nil
-	}
-
-	pageSize := len(first.Users)
-	totalPages := (first.Total + pageSize - 1) / pageSize
-	if totalPages > maxPages {
-		totalPages = maxPages
-	}
-
-	// Fetch remaining pages in parallel.
-	type pageResult struct {
-		page  int
-		users []User
-		err   error
-	}
-	results := make([]pageResult, totalPages-1)
-	var wg sync.WaitGroup
-	for i := 2; i <= totalPages; i++ {
-		wg.Add(1)
-		go func(page int) {
-			defer wg.Done()
-			resp, err := fetchPage(page)
-			results[page-2] = pageResult{page: page, users: resp.Users, err: err}
-		}(i)
-	}
-	wg.Wait()
-
-	allUsers := make([]User, 0, first.Total)
-	allUsers = append(allUsers, first.Users...)
-	for _, r := range results {
-		if r.err != nil {
-			return nil, r.err
-		}
-		allUsers = append(allUsers, r.users...)
-	}
-
-	return allUsers, nil
+		return resp.Users, resp.Total, nil
+	}, 100)
 }
 
 // ListUsers fetches all users from the Open WebUI instance (auto-paginates).

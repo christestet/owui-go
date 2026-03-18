@@ -1,13 +1,13 @@
 package instances
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"text/tabwriter"
 
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/christestet/owui-go/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -24,10 +24,7 @@ var healthCmd = &cobra.Command{
 		targetInstance, _ := cmd.Flags().GetString("instance")
 		outputFormat, _ := cmd.Flags().GetString("output")
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		type HealthStatus struct {
 			Name   string `json:"name"`
