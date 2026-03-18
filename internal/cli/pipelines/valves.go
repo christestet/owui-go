@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -140,13 +141,9 @@ var valvesUpdateCmd = &cobra.Command{
 			return fmt.Errorf("invalid --data JSON: expected object")
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm updating valves for pipe '%s' (urlIdx=%d)?", target.pipe.PipeID, target.pipe.URLIdx)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating valves for pipe '%s' (urlIdx=%d)?", target.pipe.PipeID, target.pipe.URLIdx))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -114,13 +115,9 @@ var setVisibilityCmd = &cobra.Command{
 			names = append(names, m.Name)
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm making %d model(s) %s: %s?", len(resolvedModels), visibility, strings.Join(names, ", "))).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm making %d model(s) %s: %s?", len(resolvedModels), visibility, strings.Join(names, ", ")))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

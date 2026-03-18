@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -100,13 +101,9 @@ var addUsersCmd = &cobra.Command{
 			resolvedNames = append(resolvedNames, u.Name)
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

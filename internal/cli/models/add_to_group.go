@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -170,13 +171,9 @@ Two modes:
 			confirmMsg = fmt.Sprintf("Confirm adding %d model(s) to group '%s': %s?", len(resolvedModels), resolvedGroups[0].Name, strings.Join(modelNames, ", "))
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(confirmMsg).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(confirmMsg)
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

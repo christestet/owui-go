@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -121,8 +122,8 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 	}
 
 	// Ask about adding users
-	var addUsers bool
-	if err := huh.NewConfirm().Title("Add users to this group?").Value(&addUsers).Run(); err != nil {
+	addUsers, err := prompts.ConfirmYN("Add users to this group?")
+	if err != nil {
 		return err
 	}
 
@@ -149,8 +150,8 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 	}
 
 	// Ask about permissions
-	var setPermissions bool
-	if err := huh.NewConfirm().Title("Set custom permissions?").Value(&setPermissions).Run(); err != nil {
+	setPermissions, err := prompts.ConfirmYN("Set custom permissions?")
+	if err != nil {
 		return err
 	}
 

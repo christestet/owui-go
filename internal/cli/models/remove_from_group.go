@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -135,13 +136,9 @@ var removeFromGroupCmd = &cobra.Command{
 			}
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", "))).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", ")))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

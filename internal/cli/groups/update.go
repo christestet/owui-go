@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -99,13 +100,9 @@ var updateCmd = &cobra.Command{
 			Permissions: permissions,
 		}
 
-		var confirmed bool
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm updating group '%s'?", group.Name)).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating group '%s'?", group.Name))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
@@ -145,8 +142,8 @@ func runUpdateWizard(group *api.Group, name, description, permissions *string) e
 		return err
 	}
 
-	var setPermissions bool
-	if err := huh.NewConfirm().Title("Update permissions?").Value(&setPermissions).Run(); err != nil {
+	setPermissions, err := prompts.ConfirmYN("Update permissions?")
+	if err != nil {
 		return err
 	}
 

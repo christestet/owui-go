@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -114,17 +115,13 @@ var setStatusCmd = &cobra.Command{
 			names = append(names, m.Name)
 		}
 
-		var confirmed bool
 		verb := "enabling"
 		if action == "disable" {
 			verb = "disabling"
 		}
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("Confirm %s %d model(s): %s?", verb, len(resolvedModels), strings.Join(names, ", "))).
-			Value(&confirmed).
-			Run()
+		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm %s %d model(s): %s?", verb, len(resolvedModels), strings.Join(names, ", ")))
 		if err != nil {
-			return wrapInteractiveCancelled(err)
+			return err
 		}
 		if !confirmed {
 			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")

@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/spf13/cobra"
 )
 
@@ -47,13 +48,9 @@ var addCmd = &cobra.Command{
 		if !cmd.Flags().Changed("url-idx") {
 			customSet := false
 			if interactive {
-				var custom bool
-				err := huh.NewConfirm().
-					Title("Use custom urlIdx?").
-					Value(&custom).
-					Run()
+				custom, err := prompts.ConfirmYN("Use custom urlIdx?")
 				if err != nil {
-					return wrapInteractiveCancelled(err)
+					return err
 				}
 				if custom {
 					idxText := ""
