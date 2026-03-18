@@ -8,50 +8,13 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
-// isOAuthGroup returns true if the group was auto-created via OAuth.
-func isOAuthGroup(g api.Group) bool {
-	return strings.HasPrefix(g.Description, "Group ") &&
-		strings.HasSuffix(g.Description, " created automatically via OAuth.")
-}
-
-// filterLocalGroups returns only non-OAuth groups.
-func filterLocalGroups(groups []api.Group) []api.Group {
-	var local []api.Group
-	for _, g := range groups {
-		if !isOAuthGroup(g) {
-			local = append(local, g)
-		}
-	}
-	return local
-}
-
-// filterUsersByRole returns only users with the given role.
-func filterUsersByRole(users []api.User, role string) []api.User {
-	var filtered []api.User
-	for _, u := range users {
-		if u.Role == role {
-			filtered = append(filtered, u)
-		}
-	}
-	return filtered
-}
-
-// findGroupByName looks up a group by name from a group list.
-func findGroupByName(groups []api.Group, name string) (*api.Group, error) {
-	for i := range groups {
-		if groups[i].Name == name {
-			return &groups[i], nil
-		}
-	}
-	return nil, fmt.Errorf("group %q not found", name)
-}
-
 // localGroupCompletionFunc returns a flag completion function for local group names.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := resolveClientForCompletion()
+	client := shared.ResolveClientForCompletion()
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -60,7 +23,7 @@ func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	var comps []string
-	for _, g := range filterLocalGroups(groups) {
+	for _, g := range shared.FilterLocalGroups(groups) {
 		if strings.HasPrefix(g.Name, toComplete) {
 			comps = append(comps, g.Name)
 		}
@@ -76,15 +39,12 @@ var addToGroupCmd = &cobra.Command{
 	Args:              cobra.ArbitraryArgs,
 	ValidArgsFunction: multiUserCompletionFunc("user"),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		allUsers, err := client.ListUsers(ctx)
 		if err != nil {
@@ -95,7 +55,7 @@ var addToGroupCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		localGroups := filterLocalGroups(groups)
+		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
@@ -103,7 +63,7 @@ var addToGroupCmd = &cobra.Command{
 		}
 
 		// Filter to only role=user
-		eligibleUsers := filterUsersByRole(allUsers, "user")
+		eligibleUsers := shared.FilterUsersByRole(allUsers, "user")
 
 		var selectedNames []string
 		if len(args) > 0 {
@@ -118,9 +78,9 @@ var addToGroupCmd = &cobra.Command{
 			for _, u := range eligibleUsers {
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
 			}
-			err := runSearchableMultiSelect("Select users to add to group", options, &selectedNames)
+			err := prompts.RunSearchableMultiSelect("Select users to add to group", options, &selectedNames)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -136,13 +96,13 @@ var addToGroupCmd = &cobra.Command{
 			for _, g := range localGroups {
 				groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
 			}
-			err := runSearchableSelect("Select group", groupOptions, &groupName)
+			err := prompts.RunSearchableSelect("Select group", groupOptions, &groupName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := findGroupByName(localGroups, groupName)
+		group, err := shared.FindGroupByName(localGroups, groupName)
 		if err != nil {
 			return err
 		}
@@ -151,7 +111,7 @@ var addToGroupCmd = &cobra.Command{
 		var userIDs []string
 		var resolvedNames []string
 		for _, name := range selectedNames {
-			u, err := findUserByName(allUsers, name)
+			u, err := shared.FindUserByName(allUsers, name)
 			if err != nil {
 				return err
 			}
@@ -187,15 +147,12 @@ var removeFromGroupCmd = &cobra.Command{
 	Short: "Remove user(s) from a group",
 	Args:  cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		allUsers, err := client.ListUsers(ctx)
 		if err != nil {
@@ -207,7 +164,7 @@ var removeFromGroupCmd = &cobra.Command{
 			return err
 		}
 		// Nur lokale Gruppen zulassen (keine OAuth-Gruppen)
-		localGroups := filterLocalGroups(groups)
+		localGroups := shared.FilterLocalGroups(groups)
 		if len(localGroups) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
 			return nil
@@ -220,13 +177,13 @@ var removeFromGroupCmd = &cobra.Command{
 			for _, g := range localGroups {
 				groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
 			}
-			err := runSearchableSelect("Select group", groupOptions, &groupName)
+			err := prompts.RunSearchableSelect("Select group", groupOptions, &groupName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := findGroupByName(localGroups, groupName)
+		group, err := shared.FindGroupByName(localGroups, groupName)
 		if err != nil {
 			return err
 		}
@@ -252,7 +209,7 @@ var removeFromGroupCmd = &cobra.Command{
 			}
 		}
 		// Nur Nutzer mit Rolle "user" aus der Gruppe
-		eligibleUsers := filterUsersByRole(groupUsers, "user")
+		eligibleUsers := shared.FilterUsersByRole(groupUsers, "user")
 
 		var selectedNames []string
 		if len(args) > 0 {
@@ -279,9 +236,9 @@ var removeFromGroupCmd = &cobra.Command{
 			for _, u := range eligibleUsers {
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
 			}
-			err := runSearchableMultiSelect("Select users to remove from group", options, &selectedNames)
+			err := prompts.RunSearchableMultiSelect("Select users to remove from group", options, &selectedNames)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -294,7 +251,7 @@ var removeFromGroupCmd = &cobra.Command{
 		var userIDs []string
 		var resolvedNames []string
 		for _, name := range selectedNames {
-			u, err := findUserByName(groupUsers, name)
+			u, err := shared.FindUserByName(groupUsers, name)
 			if err != nil {
 				return err
 			}

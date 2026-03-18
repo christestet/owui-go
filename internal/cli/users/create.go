@@ -1,11 +1,12 @@
 package users
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +15,7 @@ var createCmd = &cobra.Command{
 	Short: "Create a new user",
 	Long:  `Create a new user in Open WebUI. Provide flags for non-interactive mode, or omit them to use the interactive wizard.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
@@ -27,7 +28,7 @@ var createCmd = &cobra.Command{
 		// If any required field is missing, run interactive mode
 		if name == "" || email == "" || password == "" || role == "" {
 			if err := runCreateWizard(&name, &email, &password, &role); err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -41,10 +42,7 @@ var createCmd = &cobra.Command{
 			return fmt.Errorf("password is required")
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		form := api.CreateUserForm{
 			Name:     name,
@@ -98,7 +96,7 @@ func runCreateWizard(name, email, password, role *string) error {
 				Description("Password for the user").
 				EchoMode(huh.EchoModePassword).
 				Value(password),
-			runSearchableSelectWithDescription("Select role", "Role for the user", roleOptions, role),
+			prompts.RunSearchableSelectWithDescription("Select role", "Role for the user", roleOptions, role),
 		),
 	)
 	return form.Run()

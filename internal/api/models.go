@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"sync"
 )
 
 // ModelCapabilities describes which capabilities a model supports.
@@ -100,9 +99,7 @@ type ModelListOptions struct {
 // Page 1 is fetched first to determine the total; remaining pages are fetched
 // in parallel using goroutines. If opts is nil, no filtering is applied.
 func (c *Client) ListModelsWithOptions(ctx context.Context, opts *ModelListOptions) ([]ModelAccessResponse, error) {
-	const maxPages = 100
-
-	fetchPage := func(page int) (ModelAccessListResponse, error) {
+	return fetchAllPages(func(page int) ([]ModelAccessResponse, int, error) {
 		params := url.Values{}
 		params.Set("page", strconv.Itoa(page))
 		if opts != nil && opts.Query != "" {
@@ -114,58 +111,14 @@ func (c *Client) ListModelsWithOptions(ctx context.Context, opts *ModelListOptio
 		endpoint := "/api/v1/models/list?" + params.Encode()
 		body, err := c.sendRequest(ctx, "GET", endpoint, nil)
 		if err != nil {
-			return ModelAccessListResponse{}, fmt.Errorf("listing models (page %d): %w", page, err)
+			return nil, 0, fmt.Errorf("listing models (page %d): %w", page, err)
 		}
 		var resp ModelAccessListResponse
 		if err := json.Unmarshal(body, &resp); err != nil {
-			return ModelAccessListResponse{}, fmt.Errorf("decoding models response: %w", err)
+			return nil, 0, fmt.Errorf("decoding models response: %w", err)
 		}
-		return resp, nil
-	}
-
-	// Fetch page 1 to learn the total and page size.
-	first, err := fetchPage(1)
-	if err != nil {
-		return nil, err
-	}
-	if len(first.Items) == 0 || len(first.Items) >= first.Total {
-		return first.Items, nil
-	}
-
-	pageSize := len(first.Items)
-	totalPages := (first.Total + pageSize - 1) / pageSize
-	if totalPages > maxPages {
-		totalPages = maxPages
-	}
-
-	// Fetch remaining pages in parallel.
-	type pageResult struct {
-		page   int
-		models []ModelAccessResponse
-		err    error
-	}
-	results := make([]pageResult, totalPages-1)
-	var wg sync.WaitGroup
-	for i := 2; i <= totalPages; i++ {
-		wg.Add(1)
-		go func(page int) {
-			defer wg.Done()
-			resp, err := fetchPage(page)
-			results[page-2] = pageResult{page: page, models: resp.Items, err: err}
-		}(i)
-	}
-	wg.Wait()
-
-	allModels := make([]ModelAccessResponse, 0, first.Total)
-	allModels = append(allModels, first.Items...)
-	for _, r := range results {
-		if r.err != nil {
-			return nil, r.err
-		}
-		allModels = append(allModels, r.models...)
-	}
-
-	return allModels, nil
+		return resp.Items, resp.Total, nil
+	}, 100)
 }
 
 // ListModels fetches all models from the Open WebUI instance (auto-paginates).

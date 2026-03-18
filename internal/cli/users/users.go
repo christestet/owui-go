@@ -11,9 +11,11 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
-	"github.com/christestet/owui-go/internal/config"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
+
+const msgNoUsersFound = "No users found."
 
 var usersCmd = &cobra.Command{
 	Use:   "users",
@@ -32,59 +34,13 @@ func Register(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(usersCmd)
 }
 
-// resolveClient loads config, resolves the target instance, and returns an API client.
-func resolveClient(cmd *cobra.Command) (*api.Client, error) {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	targetInstance, _ := cmd.Flags().GetString("instance")
-	if targetInstance == "" {
-		targetInstance = cfg.ActiveInstance
-	}
-	if targetInstance == "" {
-		return nil, fmt.Errorf("no active instance configured; use 'owui instances use <name>' or pass --instance")
-	}
-
-	inst, ok := cfg.Instances[targetInstance]
-	if !ok {
-		return nil, fmt.Errorf("instance %q not found in config", targetInstance)
-	}
-
-	return api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds), nil
-}
-
-// resolveClientForCompletion is a best-effort version for shell completion callbacks.
-func resolveClientForCompletion() *api.Client {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil
-	}
-	inst, ok := cfg.Instances[cfg.ActiveInstance]
-	if !ok {
-		return nil
-	}
-	return api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds)
-}
-
-// findUserByName looks up a user by name from a user list.
-func findUserByName(users []api.User, name string) (*api.User, error) {
-	for i := range users {
-		if users[i].Name == name {
-			return &users[i], nil
-		}
-	}
-	return nil, fmt.Errorf("user %q not found", name)
-}
-
 // userCompletionFunc returns a ValidArgsFunction that completes user names from the API.
 func userCompletionFunc() func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		client := resolveClientForCompletion()
+		client := shared.ResolveClientForCompletion()
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -105,7 +61,7 @@ func userCompletionFunc() func(cmd *cobra.Command, args []string, toComplete str
 // multiUserCompletionFunc returns a ValidArgsFunction that allows completing multiple user names.
 func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client := resolveClientForCompletion()
+		client := shared.ResolveClientForCompletion()
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -141,15 +97,12 @@ var listCmd = &cobra.Command{
 	Short:   "List all users",
 	Aliases: []string{"ls"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		filterQuery, _ := cmd.Flags().GetString("filter")
 		roleFilter, _ := cmd.Flags().GetString("role")
@@ -165,7 +118,7 @@ var listCmd = &cobra.Command{
 		}
 
 		if roleFilter != "" {
-			users = filterUsersByRole(users, roleFilter)
+			users = shared.FilterUsersByRole(users, roleFilter)
 		}
 
 		sort.Slice(users, func(i, j int) bool {
@@ -217,15 +170,12 @@ var removeCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: userCompletionFunc(),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		users, err := client.ListUsers(ctx)
 		if err != nil {
@@ -245,13 +195,13 @@ var removeCmd = &cobra.Command{
 				fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
 				return nil
 			}
-			err := runSearchableSelect("Select user to delete", options, &userName)
+			err := prompts.RunSearchableSelect("Select user to delete", options, &userName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		user, err := findUserByName(users, userName)
+		user, err := shared.FindUserByName(users, userName)
 		if err != nil {
 			return err
 		}
@@ -284,15 +234,12 @@ var updateRoleCmd = &cobra.Command{
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: userCompletionFunc(),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		users, err := client.ListUsers(ctx)
 		if err != nil {
@@ -311,13 +258,13 @@ var updateRoleCmd = &cobra.Command{
 				fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
 				return nil
 			}
-			err := runSearchableSelect("Select user to update role", options, &userName)
+			err := prompts.RunSearchableSelect("Select user to update role", options, &userName)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		user, err := findUserByName(users, userName)
+		user, err := shared.FindUserByName(users, userName)
 		if err != nil {
 			return err
 		}
@@ -328,9 +275,9 @@ var updateRoleCmd = &cobra.Command{
 			for _, r := range validRoles {
 				roleOptions = append(roleOptions, huh.NewOption(r, r))
 			}
-			err := runSearchableSelect("Select new role", roleOptions, &role)
+			err := prompts.RunSearchableSelect("Select new role", roleOptions, &role)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 

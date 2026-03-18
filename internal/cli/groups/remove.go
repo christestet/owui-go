@@ -1,12 +1,12 @@
 package groups
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -17,21 +17,18 @@ var removeCmd = &cobra.Command{
 	Args:              cobra.ArbitraryArgs,
 	ValidArgsFunction: multiLocalGroupCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		groups, err := client.ListGroups(ctx)
 		if err != nil {
 			return err
 		}
-		localGroups := filterLocalGroups(groups)
+		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
@@ -51,9 +48,9 @@ var removeCmd = &cobra.Command{
 				}
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s members)", g.Name, members), g.Name))
 			}
-			err := runSearchableMultiSelect("Select groups to delete", options, &selectedNames)
+			err := prompts.RunSearchableMultiSelect("Select groups to delete", options, &selectedNames)
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -64,7 +61,7 @@ var removeCmd = &cobra.Command{
 
 		// Validate all group names exist
 		for _, name := range selectedNames {
-			if _, err := findGroupByName(localGroups, name); err != nil {
+			if _, err := shared.FindGroupByName(localGroups, name); err != nil {
 				return err
 			}
 		}
@@ -79,7 +76,7 @@ var removeCmd = &cobra.Command{
 		}
 
 		for _, name := range selectedNames {
-			group, _ := findGroupByName(localGroups, name)
+			group, _ := shared.FindGroupByName(localGroups, name)
 			if err := client.DeleteGroup(ctx, group.ID); err != nil {
 				return fmt.Errorf("failed to delete group %q: %w", name, err)
 			}

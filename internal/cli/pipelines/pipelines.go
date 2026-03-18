@@ -6,8 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/christestet/owui-go/internal/api"
-	"github.com/christestet/owui-go/internal/config"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -37,47 +36,11 @@ func Register(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(pipelinesCmd)
 }
 
-// resolveClient loads config, resolves the target instance, and returns an API client.
-func resolveClient(cmd *cobra.Command) (*api.Client, error) {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	targetInstance, _ := cmd.Flags().GetString("instance")
-	if targetInstance == "" {
-		targetInstance = cfg.ActiveInstance
-	}
-	if targetInstance == "" {
-		return nil, fmt.Errorf("no active instance configured; use 'owui instances use <name>' or pass --instance")
-	}
-
-	inst, ok := cfg.Instances[targetInstance]
-	if !ok {
-		return nil, fmt.Errorf("instance %q not found in config", targetInstance)
-	}
-
-	return api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds), nil
-}
-
-// resolveClientForCompletion is a best-effort version for shell completion callbacks.
-func resolveClientForCompletion() *api.Client {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil
-	}
-	inst, ok := cfg.Instances[cfg.ActiveInstance]
-	if !ok {
-		return nil
-	}
-	return api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds)
-}
-
 func pipeCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := resolveClientForCompletion()
+	client := shared.ResolveClientForCompletion()
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -124,7 +87,7 @@ func registrationCompletionFunc(cmd *cobra.Command, args []string, toComplete st
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := resolveClientForCompletion()
+	client := shared.ResolveClientForCompletion()
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

@@ -1,7 +1,6 @@
 package pipelines
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -9,6 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -16,15 +16,12 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a pipeline registration",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		urlValue, _ := cmd.Flags().GetString("url")
 		interactive := false
@@ -32,7 +29,7 @@ var addCmd = &cobra.Command{
 			interactive = true
 			err := huh.NewInput().Title("Pipeline URL").Value(&urlValue).Run()
 			if err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 		if urlValue == "" {
@@ -59,7 +56,7 @@ var addCmd = &cobra.Command{
 						Value(&idxText).
 						Run()
 					if err != nil {
-						return wrapInteractiveCancelled(err)
+						return prompts.WrapInteractiveCancelled(err)
 					}
 					parsed, err := strconv.Atoi(idxText)
 					if err != nil {

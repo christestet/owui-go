@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/christestet/owui-go/internal/api"
-	"github.com/christestet/owui-go/internal/config"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -25,42 +25,6 @@ func Register(rootCmd *cobra.Command) {
 	modelsCmd.AddCommand(removeFromGroupCmd)
 
 	rootCmd.AddCommand(modelsCmd)
-}
-
-// resolveClient loads config, resolves the target instance, and returns an API client.
-func resolveClient(cmd *cobra.Command) (*api.Client, error) {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	targetInstance, _ := cmd.Flags().GetString("instance")
-	if targetInstance == "" {
-		targetInstance = cfg.ActiveInstance
-	}
-	if targetInstance == "" {
-		return nil, fmt.Errorf("no active instance configured; use 'owui instances use <name>' or pass --instance")
-	}
-
-	inst, ok := cfg.Instances[targetInstance]
-	if !ok {
-		return nil, fmt.Errorf("instance %q not found in config", targetInstance)
-	}
-
-	return api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds), nil
-}
-
-// resolveClientForCompletion is a best-effort version for shell completion callbacks.
-func resolveClientForCompletion() *api.Client {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil
-	}
-	inst, ok := cfg.Instances[cfg.ActiveInstance]
-	if !ok {
-		return nil
-	}
-	return api.NewClient(inst.URL, inst.APIKey, cfg.Settings.TimeoutSeconds)
 }
 
 // findModelByID looks up a model by ID from a model list.
@@ -109,39 +73,12 @@ func modelStatus(m api.ModelAccessResponse) string {
 	return "disabled"
 }
 
-// isOAuthGroup returns true if the group was auto-created via OAuth.
-func isOAuthGroup(g api.Group) bool {
-	return strings.HasPrefix(g.Description, "Group ") &&
-		strings.HasSuffix(g.Description, " created automatically via OAuth.")
-}
-
-// filterLocalGroups returns only non-OAuth groups.
-func filterLocalGroups(groups []api.Group) []api.Group {
-	var local []api.Group
-	for _, g := range groups {
-		if !isOAuthGroup(g) {
-			local = append(local, g)
-		}
-	}
-	return local
-}
-
-// findGroupByName looks up a group by name from a group list.
-func findGroupByName(groups []api.Group, name string) (*api.Group, error) {
-	for i := range groups {
-		if groups[i].Name == name {
-			return &groups[i], nil
-		}
-	}
-	return nil, fmt.Errorf("group %q not found", name)
-}
-
 // modelCompletionFunc completes model IDs showing "Name (id)" format.
 func modelCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) != 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := resolveClientForCompletion()
+	client := shared.ResolveClientForCompletion()
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -162,7 +99,7 @@ func modelCompletionFunc(cmd *cobra.Command, args []string, toComplete string) (
 // filterFn determines which models to include in completions.
 func smartModelCompletionFunc(filterFn func(api.ModelAccessResponse) bool) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client := resolveClientForCompletion()
+		client := shared.ResolveClientForCompletion()
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -192,7 +129,7 @@ func smartModelCompletionFunc(filterFn func(api.ModelAccessResponse) bool) func(
 
 // multiModelCompletionFunc completes multiple model IDs, excluding already-selected ones.
 func multiModelCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := resolveClientForCompletion()
+	client := shared.ResolveClientForCompletion()
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -218,7 +155,7 @@ func multiModelCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 
 // localGroupCompletionFunc completes only local group names.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := resolveClientForCompletion()
+	client := shared.ResolveClientForCompletion()
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -227,7 +164,7 @@ func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	var comps []string
-	for _, g := range filterLocalGroups(groups) {
+	for _, g := range shared.FilterLocalGroups(groups) {
 		if strings.HasPrefix(g.Name, toComplete) {
 			comps = append(comps, g.Name)
 		}

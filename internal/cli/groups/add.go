@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -17,15 +18,12 @@ var addCmd = &cobra.Command{
 	Short: "Create a new group",
 	Long:  `Create a new group in Open WebUI. Provide flags for non-interactive mode, or omit them to use the interactive wizard.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		name, _ := cmd.Flags().GetString("name")
 		description, _ := cmd.Flags().GetString("description")
@@ -35,7 +33,7 @@ var addCmd = &cobra.Command{
 		// Interactive mode if required fields are missing
 		if name == "" || description == "" {
 			if err := runAddWizard(ctx, client, &name, &description, &permissionsStr, &usersFlag); err != nil {
-				return wrapInteractiveCancelled(err)
+				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
@@ -75,7 +73,7 @@ var addCmd = &cobra.Command{
 
 			var userIDs []string
 			for _, userName := range usersFlag {
-				u, err := findUserByName(allUsers, userName)
+				u, err := shared.FindUserByName(allUsers, userName)
 				if err != nil {
 					return err
 				}
@@ -133,7 +131,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 			return fmt.Errorf("failed to fetch users: %w", err)
 		}
 
-		eligibleUsers := filterUsersByRole(allUsers, "user")
+		eligibleUsers := shared.FilterUsersByRole(allUsers, "user")
 		if len(eligibleUsers) == 0 {
 			fmt.Println("No eligible users found (only users with role 'user' can be added).")
 		} else {
@@ -142,7 +140,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
 			}
 			var selectedNames []string
-			if err := runSearchableMultiSelect("Select users to add", options, &selectedNames); err != nil {
+			if err := prompts.RunSearchableMultiSelect("Select users to add", options, &selectedNames); err != nil {
 				return err
 			}
 			*users = selectedNames

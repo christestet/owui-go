@@ -1,12 +1,12 @@
 package groups
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"text/tabwriter"
 
+	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -15,15 +15,12 @@ var listCmd = &cobra.Command{
 	Short:   "List all groups",
 	Aliases: []string{"ls"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := resolveClient(cmd)
+		client, err := shared.ResolveClient(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
+		ctx := shared.CmdContext(cmd)
 
 		groups, err := client.ListGroups(ctx)
 		if err != nil {
@@ -33,7 +30,7 @@ var listCmd = &cobra.Command{
 		filterType, _ := cmd.Flags().GetString("filter")
 		switch filterType {
 		case "local":
-			groups = filterLocalGroups(groups)
+			groups = shared.FilterLocalGroups(groups)
 		case "oauth":
 			groups = filterOAuthGroups(groups)
 		case "":
