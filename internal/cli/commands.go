@@ -2,10 +2,12 @@ package cli
 
 import (
 	"github.com/christestet/owui-go/internal/cli/completion"
+	"github.com/christestet/owui-go/internal/cli/functions"
 	"github.com/christestet/owui-go/internal/cli/groups"
 	"github.com/christestet/owui-go/internal/cli/instances"
 	"github.com/christestet/owui-go/internal/cli/models"
 	"github.com/christestet/owui-go/internal/cli/pipelines"
+	"github.com/christestet/owui-go/internal/cli/tools"
 	cliUpdate "github.com/christestet/owui-go/internal/cli/update"
 	"github.com/christestet/owui-go/internal/cli/users"
 	cliVersion "github.com/christestet/owui-go/internal/cli/version"
@@ -22,4 +24,6 @@ func RegisterAll(root *cobra.Command) {
 	groups.Register(root)
 	models.Register(root)
 	pipelines.Register(root)
+	functions.Register(root)
+	tools.Register(root)
 }

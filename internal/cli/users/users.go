@@ -290,12 +290,7 @@ var updateRoleCmd = &cobra.Command{
 			return nil
 		}
 
-		form := api.UpdateUserForm{
-			Role:            role,
-			Name:            user.Name,
-			Email:           user.Email,
-			ProfileImageURL: "",
-		}
+		form := api.UpdateUserForm{Role: &role}
 		if err := client.UpdateUser(ctx, user.ID, form); err != nil {
 			return err
 		}

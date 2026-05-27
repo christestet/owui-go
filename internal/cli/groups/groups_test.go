@@ -128,6 +128,35 @@ func newGroupsServer(t *testing.T) *httptest.Server {
 				},
 			}
 			json.NewEncoder(w).Encode(api.ModelAccessListResponse{Items: items, Total: len(items)})
+		case r.Method == "GET" && r.URL.Path == "/api/v1/tools/list":
+			json.NewEncoder(w).Encode([]api.Tool{
+				{
+					ID:   "t-alpha",
+					Name: "alpha-tool",
+					AccessGrants: []api.AccessGrantModel{
+						{PrincipalType: "group", PrincipalID: "g1", Permission: "read"},
+					},
+				},
+				{
+					ID:   "t-beta",
+					Name: "beta-tool",
+					AccessGrants: []api.AccessGrantModel{
+						{PrincipalType: "group", PrincipalID: "g1", Permission: "write"},
+					},
+				},
+				{
+					ID:           "t-gamma",
+					Name:         "gamma-tool",
+					AccessGrants: []api.AccessGrantModel{},
+				},
+				{
+					ID:   "t-delta",
+					Name: "delta-tool",
+					AccessGrants: []api.AccessGrantModel{
+						{PrincipalType: "group", PrincipalID: "g2", Permission: "read"},
+					},
+				},
+			})
 		case r.Method == "GET" && r.URL.Path == "/api/v1/groups/id/g1":
 			json.NewEncoder(w).Encode(api.Group{
 				ID:          "g1",
@@ -1161,5 +1190,230 @@ func TestFilterUsersByRole(t *testing.T) {
 		if u.Role != "user" {
 			t.Errorf("expected role 'user', got %q for %q", u.Role, u.Name)
 		}
+	}
+}
+
+// --- show-tools command tests ---
+
+func resetShowToolsFlags() {
+	showToolsCmd.Flags().Set("permission", "all")
+	showToolsCmd.Flags().Set("include-public", "false")
+	if showToolsCmd.Flags().Lookup("output") != nil {
+		showToolsCmd.Flags().Set("output", "")
+	}
+}
+
+func TestShowToolsCommand_NoActiveInstance(t *testing.T) {
+	cleanup := setupEmptyConfig(t)
+	defer cleanup()
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"developers"})
+	if err == nil {
+		t.Fatal("expected error for no active instance")
+	}
+	if !strings.Contains(err.Error(), "no active instance") {
+		t.Errorf("expected 'no active instance' error, got: %v", err)
+	}
+}
+
+func TestShowToolsCommand_GroupNotFound(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowToolsFlags()
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"nonexistent"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent group")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
+func TestShowToolsCommand_InvalidPermission(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowToolsFlags()
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+	showToolsCmd.Flags().Set("permission", "bogus")
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"developers"})
+	if err == nil {
+		t.Fatal("expected error for invalid permission")
+	}
+	if !strings.Contains(err.Error(), "invalid permission") {
+		t.Errorf("expected 'invalid permission' error, got: %v", err)
+	}
+}
+
+func TestShowToolsCommand_PrettyOutput(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowToolsFlags()
+
+	if showToolsCmd.Flags().Lookup("output") == nil {
+		showToolsCmd.Flags().String("output", "", "")
+	}
+	showToolsCmd.Flags().Set("output", "")
+	showToolsCmd.Flags().Set("permission", "all")
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Group: developers (g1)") {
+		t.Errorf("expected group header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "── Read ──") {
+		t.Errorf("expected Read section header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "── Write ──") {
+		t.Errorf("expected Write section header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "alpha-tool") {
+		t.Errorf("expected 'alpha-tool' (read-granted) in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "beta-tool") {
+		t.Errorf("expected 'beta-tool' (write-granted) in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "delta-tool") {
+		t.Errorf("expected 'delta-tool' (granted to g2) NOT to appear, got:\n%s", output)
+	}
+	if strings.Contains(output, "Public") {
+		t.Errorf("expected no Public section without --include-public, got:\n%s", output)
+	}
+}
+
+func TestShowToolsCommand_PermissionFilter(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowToolsFlags()
+
+	if showToolsCmd.Flags().Lookup("output") == nil {
+		showToolsCmd.Flags().String("output", "", "")
+	}
+	showToolsCmd.Flags().Set("output", "")
+	showToolsCmd.Flags().Set("permission", "write")
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "── Write ──") {
+		t.Errorf("expected Write section, got:\n%s", output)
+	}
+	if strings.Contains(output, "── Read ──") {
+		t.Errorf("expected no Read section with --permission write, got:\n%s", output)
+	}
+	if !strings.Contains(output, "beta-tool") {
+		t.Errorf("expected 'beta-tool' in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "alpha-tool") {
+		t.Errorf("expected 'alpha-tool' (read) NOT in output, got:\n%s", output)
+	}
+}
+
+func TestShowToolsCommand_IncludePublic(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowToolsFlags()
+
+	if showToolsCmd.Flags().Lookup("output") == nil {
+		showToolsCmd.Flags().String("output", "", "")
+	}
+	showToolsCmd.Flags().Set("output", "")
+	showToolsCmd.Flags().Set("permission", "all")
+	showToolsCmd.Flags().Set("include-public", "true")
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Public") {
+		t.Errorf("expected Public section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "gamma-tool") {
+		t.Errorf("expected 'gamma-tool' (public) in output, got:\n%s", output)
+	}
+}
+
+func TestShowToolsCommand_JSONOutput(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowToolsFlags()
+
+	if showToolsCmd.Flags().Lookup("output") == nil {
+		showToolsCmd.Flags().String("output", "", "")
+	}
+	showToolsCmd.Flags().Set("output", "json")
+	showToolsCmd.Flags().Set("permission", "all")
+	showToolsCmd.Flags().Set("include-public", "true")
+
+	buf := new(bytes.Buffer)
+	showToolsCmd.SetOut(buf)
+
+	err := showToolsCmd.RunE(showToolsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result struct {
+		Group struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"group"`
+		Read   []api.Tool `json:"read"`
+		Write  []api.Tool `json:"write"`
+		Public []api.Tool `json:"public"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("expected valid JSON, got error: %v\nOutput:\n%s", err, buf.String())
+	}
+	if result.Group.ID != "g1" || result.Group.Name != "developers" {
+		t.Errorf("unexpected group ref: %+v", result.Group)
+	}
+	if len(result.Read) != 1 || result.Read[0].ID != "t-alpha" {
+		t.Errorf("expected one read tool 't-alpha', got: %+v", result.Read)
+	}
+	if len(result.Write) != 1 || result.Write[0].ID != "t-beta" {
+		t.Errorf("expected one write tool 't-beta', got: %+v", result.Write)
+	}
+	if len(result.Public) != 1 || result.Public[0].ID != "t-gamma" {
+		t.Errorf("expected one public tool 't-gamma', got: %+v", result.Public)
 	}
 }
