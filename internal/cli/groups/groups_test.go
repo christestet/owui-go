@@ -94,6 +94,40 @@ func newGroupsServer(t *testing.T) *httptest.Server {
 				{ID: "g2", Name: "oauth-group", Description: "Group oauth-group created automatically via OAuth.", MemberCount: memberCountPtr(5)},
 				{ID: "g3", Name: "designers", Description: "Design team", MemberCount: memberCountPtr(2)},
 			})
+		case r.Method == "GET" && r.URL.Path == "/api/v1/models/list":
+			items := []api.ModelAccessResponse{
+				{
+					ID:       "m-alpha",
+					Name:     "alpha",
+					IsActive: true,
+					AccessGrants: []api.AccessGrantModel{
+						{PrincipalType: "group", PrincipalID: "g1", Permission: "read"},
+					},
+				},
+				{
+					ID:       "m-beta",
+					Name:     "beta",
+					IsActive: true,
+					AccessGrants: []api.AccessGrantModel{
+						{PrincipalType: "group", PrincipalID: "g1", Permission: "write"},
+					},
+				},
+				{
+					ID:           "m-gamma",
+					Name:         "gamma",
+					IsActive:     true,
+					AccessGrants: []api.AccessGrantModel{},
+				},
+				{
+					ID:       "m-delta",
+					Name:     "delta",
+					IsActive: false,
+					AccessGrants: []api.AccessGrantModel{
+						{PrincipalType: "group", PrincipalID: "g2", Permission: "read"},
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(api.ModelAccessListResponse{Items: items, Total: len(items)})
 		case r.Method == "GET" && r.URL.Path == "/api/v1/groups/id/g1":
 			json.NewEncoder(w).Encode(api.Group{
 				ID:          "g1",
@@ -748,6 +782,232 @@ func TestRemoveUsersCommand_NoActiveInstance(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no active instance") {
 		t.Errorf("expected 'no active instance' error, got: %v", err)
+	}
+}
+
+// --- show-models command tests ---
+
+// resetShowModelsFlags sets the show-models flags back to defaults between tests.
+func resetShowModelsFlags() {
+	showModelsCmd.Flags().Set("permission", "all")
+	showModelsCmd.Flags().Set("include-public", "false")
+	if showModelsCmd.Flags().Lookup("output") != nil {
+		showModelsCmd.Flags().Set("output", "")
+	}
+}
+
+func TestShowModelsCommand_NoActiveInstance(t *testing.T) {
+	cleanup := setupEmptyConfig(t)
+	defer cleanup()
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"developers"})
+	if err == nil {
+		t.Fatal("expected error for no active instance")
+	}
+	if !strings.Contains(err.Error(), "no active instance") {
+		t.Errorf("expected 'no active instance' error, got: %v", err)
+	}
+}
+
+func TestShowModelsCommand_GroupNotFound(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowModelsFlags()
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"nonexistent"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent group")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
+func TestShowModelsCommand_InvalidPermission(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowModelsFlags()
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+	showModelsCmd.Flags().Set("permission", "bogus")
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"developers"})
+	if err == nil {
+		t.Fatal("expected error for invalid permission")
+	}
+	if !strings.Contains(err.Error(), "invalid permission") {
+		t.Errorf("expected 'invalid permission' error, got: %v", err)
+	}
+}
+
+func TestShowModelsCommand_PrettyOutput(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowModelsFlags()
+
+	if showModelsCmd.Flags().Lookup("output") == nil {
+		showModelsCmd.Flags().String("output", "", "")
+	}
+	showModelsCmd.Flags().Set("output", "")
+	showModelsCmd.Flags().Set("permission", "all")
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Group: developers (g1)") {
+		t.Errorf("expected group header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "── Read ──") {
+		t.Errorf("expected Read section header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "── Write ──") {
+		t.Errorf("expected Write section header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "alpha") {
+		t.Errorf("expected 'alpha' (read-granted) in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "beta") {
+		t.Errorf("expected 'beta' (write-granted) in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "delta") {
+		t.Errorf("expected 'delta' (granted to g2) NOT to appear, got:\n%s", output)
+	}
+	if strings.Contains(output, "Public") {
+		t.Errorf("expected no Public section without --include-public, got:\n%s", output)
+	}
+}
+
+func TestShowModelsCommand_PermissionFilter(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowModelsFlags()
+
+	if showModelsCmd.Flags().Lookup("output") == nil {
+		showModelsCmd.Flags().String("output", "", "")
+	}
+	showModelsCmd.Flags().Set("output", "")
+	showModelsCmd.Flags().Set("permission", "read")
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "── Read ──") {
+		t.Errorf("expected Read section, got:\n%s", output)
+	}
+	if strings.Contains(output, "── Write ──") {
+		t.Errorf("expected no Write section with --permission read, got:\n%s", output)
+	}
+	if !strings.Contains(output, "alpha") {
+		t.Errorf("expected 'alpha' in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "beta") {
+		t.Errorf("expected 'beta' (write) NOT in output, got:\n%s", output)
+	}
+}
+
+func TestShowModelsCommand_IncludePublic(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowModelsFlags()
+
+	if showModelsCmd.Flags().Lookup("output") == nil {
+		showModelsCmd.Flags().String("output", "", "")
+	}
+	showModelsCmd.Flags().Set("output", "")
+	showModelsCmd.Flags().Set("permission", "all")
+	showModelsCmd.Flags().Set("include-public", "true")
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Public") {
+		t.Errorf("expected Public section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "gamma") {
+		t.Errorf("expected 'gamma' (public) in output, got:\n%s", output)
+	}
+}
+
+func TestShowModelsCommand_JSONOutput(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+	defer resetShowModelsFlags()
+
+	if showModelsCmd.Flags().Lookup("output") == nil {
+		showModelsCmd.Flags().String("output", "", "")
+	}
+	showModelsCmd.Flags().Set("output", "json")
+	showModelsCmd.Flags().Set("permission", "all")
+	showModelsCmd.Flags().Set("include-public", "true")
+
+	buf := new(bytes.Buffer)
+	showModelsCmd.SetOut(buf)
+
+	err := showModelsCmd.RunE(showModelsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result struct {
+		Group struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"group"`
+		Read   []api.ModelAccessResponse `json:"read"`
+		Write  []api.ModelAccessResponse `json:"write"`
+		Public []api.ModelAccessResponse `json:"public"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("expected valid JSON, got error: %v\nOutput:\n%s", err, buf.String())
+	}
+	if result.Group.ID != "g1" || result.Group.Name != "developers" {
+		t.Errorf("unexpected group ref: %+v", result.Group)
+	}
+	if len(result.Read) != 1 || result.Read[0].ID != "m-alpha" {
+		t.Errorf("expected one read model 'm-alpha', got: %+v", result.Read)
+	}
+	if len(result.Write) != 1 || result.Write[0].ID != "m-beta" {
+		t.Errorf("expected one write model 'm-beta', got: %+v", result.Write)
+	}
+	if len(result.Public) != 1 || result.Public[0].ID != "m-gamma" {
+		t.Errorf("expected one public model 'm-gamma', got: %+v", result.Public)
 	}
 }
 
