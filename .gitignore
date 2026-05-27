@@ -20,3 +20,5 @@ docs/cli/
 
 # MkDocs build output
 site/
+
+dist

@@ -1,0 +1,189 @@
+package groups
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+	"text/tabwriter"
+	"time"
+
+	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/api"
+	"github.com/christestet/owui-go/internal/cli/prompts"
+	"github.com/christestet/owui-go/internal/cli/shared"
+	"github.com/spf13/cobra"
+)
+
+var showToolsCmd = &cobra.Command{
+	Use:               "show-tools [group]",
+	Short:             "List tools a group can read or write",
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: allGroupCompletionFunc,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := shared.ResolveClient(cmd)
+		if err != nil {
+			return err
+		}
+
+		ctx := shared.CmdContext(cmd)
+
+		permission, _ := cmd.Flags().GetString("permission")
+		switch permission {
+		case "", "all", "read", "write":
+		default:
+			return fmt.Errorf("invalid permission %q: must be 'read', 'write', or 'all'", permission)
+		}
+		if permission == "" {
+			permission = "all"
+		}
+
+		includePublic, _ := cmd.Flags().GetBool("include-public")
+
+		groups, err := client.ListGroups(ctx)
+		if err != nil {
+			return err
+		}
+		if len(groups) == 0 {
+			fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
+			return nil
+		}
+
+		var groupName string
+		if len(args) > 0 {
+			groupName = args[0]
+		} else {
+			options := make([]huh.Option[string], 0, len(groups))
+			for _, g := range groups {
+				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", g.Name, groupType(g)), g.Name))
+			}
+			if err := prompts.RunSearchableSelect("Select group", options, &groupName); err != nil {
+				return prompts.WrapInteractiveCancelled(err)
+			}
+		}
+
+		group, err := shared.FindGroupByName(groups, groupName)
+		if err != nil {
+			return err
+		}
+
+		tools, err := client.ListTools(ctx)
+		if err != nil {
+			return err
+		}
+
+		var readTools, writeTools, publicTools []api.Tool
+		for _, t := range tools {
+			if len(t.AccessGrants) == 0 {
+				if includePublic {
+					publicTools = append(publicTools, t)
+				}
+				continue
+			}
+			for _, gr := range t.AccessGrants {
+				if gr.PrincipalType != "group" || gr.PrincipalID != group.ID {
+					continue
+				}
+				switch gr.Permission {
+				case "read":
+					readTools = append(readTools, t)
+				case "write":
+					writeTools = append(writeTools, t)
+				}
+			}
+		}
+
+		sortByName := func(s []api.Tool) {
+			sort.Slice(s, func(i, j int) bool { return s[i].Name < s[j].Name })
+		}
+		sortByName(readTools)
+		sortByName(writeTools)
+		sortByName(publicTools)
+
+		outputFormat, _ := cmd.Flags().GetString("output")
+		if outputFormat == "json" {
+			return renderShowToolsJSON(cmd, group, permission, includePublic, readTools, writeTools, publicTools)
+		}
+		return renderShowToolsPretty(cmd, group, permission, includePublic, readTools, writeTools, publicTools)
+	},
+}
+
+func renderShowToolsJSON(cmd *cobra.Command, group *api.Group, permission string, includePublic bool, read, write, public []api.Tool) error {
+	type groupRef struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	out := struct {
+		Group  groupRef   `json:"group"`
+		Read   []api.Tool `json:"read,omitempty"`
+		Write  []api.Tool `json:"write,omitempty"`
+		Public []api.Tool `json:"public,omitempty"`
+	}{
+		Group: groupRef{ID: group.ID, Name: group.Name},
+	}
+	if permission == "all" || permission == "read" {
+		out.Read = read
+	}
+	if permission == "all" || permission == "write" {
+		out.Write = write
+	}
+	if includePublic {
+		out.Public = public
+	}
+
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	return nil
+}
+
+func renderShowToolsPretty(cmd *cobra.Command, group *api.Group, permission string, includePublic bool, read, write, public []api.Tool) error {
+	out := cmd.OutOrStdout()
+
+	fmt.Fprintf(out, "Group: %s (%s)\n", group.Name, group.ID)
+	totalGrants := len(read) + len(write)
+	fmt.Fprintf(out, "Grants: %d tool(s)\n", totalGrants)
+	fmt.Fprintln(out)
+
+	showSection := func(label string, list []api.Tool) {
+		fmt.Fprintf(out, "── %s ──\n", label)
+		if len(list) == 0 {
+			fmt.Fprintln(out, "  (none)")
+			fmt.Fprintln(out)
+			return
+		}
+		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
+		fmt.Fprintln(w, "  NAME\tID\tUPDATED")
+		for _, t := range list {
+			updated := "-"
+			if t.UpdatedAt > 0 {
+				updated = time.Unix(t.UpdatedAt, 0).Format("2006-01-02")
+			}
+			fmt.Fprintf(w, "  %s\t%s\t%s\n", t.Name, t.ID, updated)
+		}
+		w.Flush()
+		fmt.Fprintln(out)
+	}
+
+	if permission == "all" || permission == "read" {
+		showSection("Read", read)
+	}
+	if permission == "all" || permission == "write" {
+		showSection("Write", write)
+	}
+	if includePublic {
+		showSection("Public (no grants — visible to all)", public)
+	}
+
+	if totalGrants == 0 && !includePublic {
+		fmt.Fprintf(out, "No tools grant access to group %q. Use --include-public to also list tools visible to everyone.\n", group.Name)
+	}
+
+	return nil
+}
+
+func init() {
+	showToolsCmd.Flags().String("permission", "all", "filter by permission: read, write, or all")
+	showToolsCmd.Flags().Bool("include-public", false, "also list public tools (no access grants)")
+}

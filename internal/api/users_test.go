@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -218,6 +219,7 @@ func TestDeleteUser_Error(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
+	var rawBody []byte
 	var receivedForm UpdateUserForm
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -227,25 +229,64 @@ func TestUpdateUser(t *testing.T) {
 		if r.URL.Path != "/api/v1/users/u1/update" {
 			t.Errorf("expected path /api/v1/users/u1/update, got %s", r.URL.Path)
 		}
-		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &receivedForm)
+		rawBody, _ = io.ReadAll(r.Body)
+		json.Unmarshal(rawBody, &receivedForm)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"id":"u1","role":"admin"}`))
 	}))
 	defer server.Close()
 
 	client := NewClient(server.URL, "secret", 1)
+	role := "admin"
+	name := "alice"
+	email := "alice@example.com"
 	form := UpdateUserForm{
-		Role:  "admin",
-		Name:  "alice",
-		Email: "alice@example.com",
+		Role:  &role,
+		Name:  &name,
+		Email: &email,
 	}
 	err := client.UpdateUser(context.Background(), "u1", form)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if receivedForm.Role != "admin" {
-		t.Errorf("expected role 'admin', got %q", receivedForm.Role)
+	if receivedForm.Role == nil || *receivedForm.Role != "admin" {
+		t.Errorf("expected role 'admin', got %v", receivedForm.Role)
+	}
+
+	// Partial-update guarantee: fields left unset must not appear in the JSON body,
+	// otherwise the server would overwrite them (e.g. wipe profile_image_url).
+	if strings.Contains(string(rawBody), "profile_image_url") {
+		t.Errorf("expected profile_image_url to be omitted from request body, got: %s", string(rawBody))
+	}
+	if strings.Contains(string(rawBody), "password") {
+		t.Errorf("expected password to be omitted from request body, got: %s", string(rawBody))
+	}
+}
+
+func TestUpdateUser_PartialRoleOnly(t *testing.T) {
+	var rawBody []byte
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"u1","role":"admin"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "secret", 1)
+	role := "admin"
+	if err := client.UpdateUser(context.Background(), "u1", UpdateUserForm{Role: &role}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := string(rawBody)
+	if !strings.Contains(body, `"role":"admin"`) {
+		t.Errorf("expected role in body, got: %s", body)
+	}
+	for _, k := range []string{"name", "email", "profile_image_url", "password"} {
+		if strings.Contains(body, `"`+k+`"`) {
+			t.Errorf("expected %q to be omitted from partial update body, got: %s", k, body)
+		}
 	}
 }
 

@@ -22,6 +22,7 @@ func Register(rootCmd *cobra.Command) {
 	groupsCmd.AddCommand(updateCmd)
 	groupsCmd.AddCommand(membersCmd)
 	groupsCmd.AddCommand(showModelsCmd)
+	groupsCmd.AddCommand(showToolsCmd)
 	groupsCmd.AddCommand(addUsersCmd)
 	groupsCmd.AddCommand(removeUsersCmd)
 

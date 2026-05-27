@@ -32,11 +32,14 @@ type CreateUserForm struct {
 }
 
 // UpdateUserForm is the request body for updating a user.
+// All fields are optional; only fields set to a non-nil pointer are sent,
+// enabling partial updates (Open WebUI ≥ 0.9.5).
 type UpdateUserForm struct {
-	Role            string `json:"role"`
-	Name            string `json:"name"`
-	Email           string `json:"email"`
-	ProfileImageURL string `json:"profile_image_url"`
+	Role            *string `json:"role,omitempty"`
+	Name            *string `json:"name,omitempty"`
+	Email           *string `json:"email,omitempty"`
+	ProfileImageURL *string `json:"profile_image_url,omitempty"`
+	Password        *string `json:"password,omitempty"`
 }
 
 // Group represents a group in Open WebUI.
