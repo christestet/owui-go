@@ -162,6 +162,7 @@ func newGroupsServer(t *testing.T) *httptest.Server {
 				ID:          "g1",
 				Name:        "developers",
 				Description: "Dev team",
+				Permissions: json.RawMessage(`{"workspace":{"models":true,"knowledge":true,"prompts":false}}`),
 				MemberCount: memberCountPtr(3),
 				CreatedAt:   1700000000,
 				UpdatedAt:   1700100000,
@@ -750,6 +751,120 @@ func TestMembersCommand_JSONOutput(t *testing.T) {
 	}
 	if _, ok := result["members"]; !ok {
 		t.Error("expected 'members' key in JSON output")
+	}
+}
+
+// --- show-permissions command tests ---
+
+func TestShowPermissionsCommand_NoActiveInstance(t *testing.T) {
+	cleanup := setupEmptyConfig(t)
+	defer cleanup()
+
+	buf := new(bytes.Buffer)
+	showPermissionsCmd.SetOut(buf)
+
+	err := showPermissionsCmd.RunE(showPermissionsCmd, []string{"developers"})
+	if err == nil {
+		t.Fatal("expected error for no active instance")
+	}
+	if !strings.Contains(err.Error(), "no active instance") {
+		t.Errorf("expected 'no active instance' error, got: %v", err)
+	}
+}
+
+func TestShowPermissionsCommand_GroupNotFound(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	buf := new(bytes.Buffer)
+	showPermissionsCmd.SetOut(buf)
+
+	err := showPermissionsCmd.RunE(showPermissionsCmd, []string{"nonexistent"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent group")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
+func TestShowPermissionsCommand_PrettyOutput(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	if showPermissionsCmd.Flags().Lookup("output") == nil {
+		showPermissionsCmd.Flags().String("output", "", "")
+	}
+	showPermissionsCmd.Flags().Set("output", "")
+
+	buf := new(bytes.Buffer)
+	showPermissionsCmd.SetOut(buf)
+
+	err := showPermissionsCmd.RunE(showPermissionsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Group: developers (g1)") {
+		t.Errorf("expected group header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Permissions:") {
+		t.Errorf("expected permissions header, got:\n%s", output)
+	}
+	if !strings.Contains(output, "PERMISSION") || !strings.Contains(output, "VALUE") {
+		t.Errorf("expected permission table headers, got:\n%s", output)
+	}
+	if !strings.Contains(output, "workspace.models") || !strings.Contains(output, "true") {
+		t.Errorf("expected models permission, got:\n%s", output)
+	}
+	if !strings.Contains(output, "workspace.prompts") || !strings.Contains(output, "false") {
+		t.Errorf("expected prompts permission, got:\n%s", output)
+	}
+}
+
+func TestShowPermissionsCommand_JSONOutput(t *testing.T) {
+	server := newGroupsServer(t)
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	if showPermissionsCmd.Flags().Lookup("output") == nil {
+		showPermissionsCmd.Flags().String("output", "", "")
+	}
+	showPermissionsCmd.Flags().Set("output", "json")
+	defer showPermissionsCmd.Flags().Set("output", "")
+
+	buf := new(bytes.Buffer)
+	showPermissionsCmd.SetOut(buf)
+
+	err := showPermissionsCmd.RunE(showPermissionsCmd, []string{"developers"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result struct {
+		Group struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"group"`
+		Permissions map[string]map[string]bool `json:"permissions"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("expected valid JSON, got error: %v\nOutput:\n%s", err, buf.String())
+	}
+	if result.Group.ID != "g1" || result.Group.Name != "developers" {
+		t.Errorf("unexpected group ref: %+v", result.Group)
+	}
+	if !result.Permissions["workspace"]["models"] {
+		t.Errorf("expected workspace.models permission, got: %+v", result.Permissions)
+	}
+	if result.Permissions["workspace"]["prompts"] {
+		t.Errorf("expected workspace.prompts to be false, got: %+v", result.Permissions)
 	}
 }
 

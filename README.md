@@ -143,6 +143,8 @@ Run `make docs-readme` to refresh this section.
 | `owui` | owui is a CLI to manage Open WebUI instances |
 | `owui completion` | Generate completion script |
 | `owui completion install` | Install completion script for the current shell |
+| `owui functions` | Manage functions in an Open WebUI instance |
+| `owui functions list` | List all functions |
 | `owui groups` | Manage groups in an Open WebUI instance |
 | `owui groups add` | Create a new group |
 | `owui groups add-users` | Add user(s) to a group |
@@ -150,6 +152,9 @@ Run `make docs-readme` to refresh this section.
 | `owui groups members` | Show group details and members |
 | `owui groups remove` | Remove one or more groups |
 | `owui groups remove-users` | Remove user(s) from a group |
+| `owui groups show-models` | List models a group can read or write |
+| `owui groups show-permissions` | Show group permissions |
+| `owui groups show-tools` | List tools a group can read or write |
 | `owui groups update` | Update a group's name, description, or permissions |
 | `owui instances` | Manage Open WebUI instances |
 | `owui instances add` | Add a new instance |
@@ -174,6 +179,8 @@ Run `make docs-readme` to refresh this section.
 | `owui pipelines valves show` | Show current valves for a pipe |
 | `owui pipelines valves spec` | Show valves spec for a pipe |
 | `owui pipelines valves update` | Update valves for a pipe |
+| `owui tools` | Manage tools in an Open WebUI instance |
+| `owui tools list` | List all tools |
 | `owui update` | Update owui to the latest version |
 | `owui users` | Manage users in an Open WebUI instance |
 | `owui users add-to-group` | Add user(s) to a group |
