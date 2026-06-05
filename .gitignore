@@ -15,6 +15,10 @@ coverage.out
 
 bin/
 
+# Stray binaries from `go build ./internal/tools/...`
+/docgen
+/readmegen
+
 # Auto-generated CLI docs (built in CI / via `make docs-cli`)
 docs/src/content/docs/reference/cli/
 
