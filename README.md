@@ -252,6 +252,27 @@ make lint      # Run go vet
 make clean     # Remove build artifacts
 ```
 
+### Documentation
+
+The docs site is built with [Astro](https://astro.build) +
+[Starlight](https://starlight.astro.build) under `docs/` and published to
+[GitHub Pages](https://christestet.github.io/owui-go/). The CLI reference is
+generated from the Cobra command tree.
+
+```sh
+make docs-deps   # Install docs site dependencies (npm ci)
+make docs-dev    # Generate the CLI reference, then run the site with live reload
+make docs-site   # Generate the CLI reference, then build the static site
+make docs-readme # Refresh the auto-generated CLI table in this README
+```
+
+### Releases
+
+Releases use [release-please](https://github.com/googleapis/release-please) with
+[Conventional Commits](https://www.conventionalcommits.org/). Merging the
+release PR it opens cuts a `v*` tag, which triggers
+[GoReleaser](https://goreleaser.com) to build and publish the binaries.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
