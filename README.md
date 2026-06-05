@@ -2,6 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/go-1.26-00ADD8.svg?style=flat&logo=go)](https://golang.org)
 [![CI](https://github.com/christestet/owui-go/actions/workflows/ci.yml/badge.svg)](https://github.com/christestet/owui-go/actions/workflows/ci.yml)
+[![Docs](https://github.com/christestet/owui-go/actions/workflows/docs.yml/badge.svg)](https://christestet.github.io/owui-go/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This tool helps you seamlessly switch between and manage different instances of [Open WebUI](https://github.com/open-webui/open-webui) — an awesome open-source project that provides a user-friendly interface for interacting with various LLMs.
