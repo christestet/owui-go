@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	out := flag.String("out", "./docs/cli", "Output directory")
+	out := flag.String("out", "./docs/src/content/docs/reference/cli", "Output directory")
 	format := flag.String("format", "markdown", "markdown|man|rest")
 	front := flag.Bool("frontmatter", true, "Prepend YAML front matter to markdown")
 	flag.Parse()
@@ -36,13 +36,7 @@ func main() {
 				name := strings.TrimSuffix(base, filepath.Ext(base))
 				title := strings.ReplaceAll(name, "_", " ")
 
-				parts := strings.Split(name, "_")
-				tags := ""
-				for _, part := range parts {
-					tags += fmt.Sprintf("\n  - %s", part)
-				}
-
-				return fmt.Sprintf("---\ntitle: %q\nslug: %q\ndescription: \"Reference and examples for command: %s\"\ntags:%s\n---\n\n", title, name, title, tags)
+				return fmt.Sprintf("---\ntitle: %q\ndescription: \"Reference and examples for the %s command.\"\n---\n\n", title, title)
 			}
 			link := func(name string) string { return strings.ToLower(name) }
 

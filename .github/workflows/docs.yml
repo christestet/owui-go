@@ -1,25 +1,37 @@
-name: Build and Deploy Docs
+name: Docs
+
+# Build the Astro Starlight docs site and deploy it to GitHub Pages.
+# Enable Pages once under Settings → Pages → Build and deployment → "GitHub Actions".
 
 on:
   push:
     branches: ["main"]
+    paths:
+      - "docs/**"
+      - "internal/cli/**"
+      - "internal/tools/docgen/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "docs/**"
+      - "internal/cli/**"
+      - "internal/tools/docgen/**"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Allow one concurrent deployment; in-progress runs are not cancelled so a
+# deploy always finishes.
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -30,25 +42,44 @@ jobs:
           go-version: '1.26.0'
           cache: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Generate CLI reference
+        run: make docs-cli
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          python-version: '3.14'
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
 
-      - name: Generate Cobra CLI Docs
-        run: go run ./internal/tools/docgen -out ./docs/cli -format markdown -frontmatter
+      - name: Install dependencies
+        working-directory: docs
+        run: npm ci
 
-      - name: Install Zensical
-        run: pip install zensical
+      - name: Build Astro site
+        working-directory: docs
+        run: npm run build
 
-      - name: Build Docs
-        run: zensical build
+      - name: Set up Pages
+        uses: actions/configure-pages@v6
 
-      - name: Upload GitHub Pages Artifact
+      - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: ./site
+          path: docs/dist
 
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

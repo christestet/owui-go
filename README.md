@@ -2,6 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/go-1.26-00ADD8.svg?style=flat&logo=go)](https://golang.org)
 [![CI](https://github.com/christestet/owui-go/actions/workflows/ci.yml/badge.svg)](https://github.com/christestet/owui-go/actions/workflows/ci.yml)
+[![Docs](https://github.com/christestet/owui-go/actions/workflows/docs.yml/badge.svg)](https://christestet.github.io/owui-go/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This tool helps you seamlessly switch between and manage different instances of [Open WebUI](https://github.com/open-webui/open-webui) — an awesome open-source project that provides a user-friendly interface for interacting with various LLMs.
@@ -250,6 +251,27 @@ make fmt       # Format code
 make lint      # Run go vet
 make clean     # Remove build artifacts
 ```
+
+### Documentation
+
+The docs site is built with [Astro](https://astro.build) +
+[Starlight](https://starlight.astro.build) under `docs/` and published to
+[GitHub Pages](https://christestet.github.io/owui-go/). The CLI reference is
+generated from the Cobra command tree.
+
+```sh
+make docs-deps   # Install docs site dependencies (npm ci)
+make docs-dev    # Generate the CLI reference, then run the site with live reload
+make docs-site   # Generate the CLI reference, then build the static site
+make docs-readme # Refresh the auto-generated CLI table in this README
+```
+
+### Releases
+
+Releases use [release-please](https://github.com/googleapis/release-please) with
+[Conventional Commits](https://www.conventionalcommits.org/). Merging the
+release PR it opens cuts a `v*` tag, which triggers
+[GoReleaser](https://goreleaser.com) to build and publish the binaries.
 
 ## License
 

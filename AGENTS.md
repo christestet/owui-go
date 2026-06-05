@@ -26,9 +26,10 @@ Instead of duplicating code instructions, refer directly to the source of truth 
 - **CLI Commands**: See `internal/cli/` to understand command structure and flags. Most commands use standard flags like `-i` (instance), `-o` (output), and `-f` (filter).
 - **CLI Docs Generation**:
   - `make docs-readme` regenerates the CLI command reference block in `README.md` from Cobra command definitions (`internal/tools/readmegen`).
-  - `make docs-cli` regenerates markdown CLI reference pages under `docs/cli` (`internal/tools/docgen`).
+  - `make docs-cli` regenerates the markdown CLI reference pages into `docs/src/content/docs/reference/cli` (`internal/tools/docgen`); these are gitignored and rebuilt in CI.
   - `make docs-readme-check` is the CI guard and must pass; it fails if `README.md` is out of sync with the Cobra command tree.
-- **Release Process**: Handled via standard GitHub Actions on `main` branch pushes to tags (`v*`). We use conventional commits. Develop on `dev` and open PRs to `main`.
+- **Documentation Site**: Astro + Starlight under `docs/`, deployed to GitHub Pages via `.github/workflows/docs.yml`. See `.agents/docs/gh-pages.md`. Use `make docs-dev` / `make docs-site` locally.
+- **Release Process**: `main`-only branching. Open PRs against `main` with conventional commits. `release-please` (`release-please-config.json`, `.release-please-manifest.json`) aggregates commits into a release PR; merging it cuts a `v*` tag which triggers GoReleaser (`.goreleaser.yaml`) to build and publish binaries (`.github/workflows/release.yml`).
 
 ## Hard Rules
 - Never use emojis in the code or in the output of the CLI tool.

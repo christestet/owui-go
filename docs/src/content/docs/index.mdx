@@ -1,0 +1,33 @@
+---
+title: owui
+description: A fast and flexible CLI written in Go for managing multiple Open WebUI instances.
+template: splash
+hero:
+  tagline: A fast and flexible CLI written in Go for managing multiple Open WebUI instances.
+  actions:
+    - text: Get started
+      link: install/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/christestet/owui-go
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Manage instances" icon="laptop">
+    Add, remove, switch and health-check multiple Open WebUI instances from one
+    place.
+  </Card>
+  <Card title="Users & groups" icon="seti:default">
+    List, create and update users; manage groups, members and permissions.
+  </Card>
+  <Card title="Models, tools & pipelines" icon="puzzle">
+    Control model visibility and access, manage functions, tools and pipelines.
+  </Card>
+  <Card title="Single binary" icon="rocket">
+    Cross-platform (Linux/macOS, amd64/arm64) with built-in self-update.
+  </Card>
+</CardGrid>

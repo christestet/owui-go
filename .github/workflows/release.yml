@@ -2,11 +2,39 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Existing tag to build and release, for example v0.9.0"
+        required: false
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
+  release-please:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.tag_name == '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
   goreleaser:
+    name: GoReleaser
+    needs: release-please
+    if: ${{ always() && (needs.release-please.outputs.release_created == 'true' || inputs.tag_name != '') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,6 +42,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.tag_name || needs.release-please.outputs.tag_name }}
           fetch-depth: 0
 
       - name: Set up Go

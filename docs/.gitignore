@@ -1,0 +1,7 @@
+# Astro / Node build artifacts
+node_modules/
+dist/
+.astro/
+
+# Auto-generated CLI reference (produced by `make docs-cli`)
+src/content/docs/reference/cli/

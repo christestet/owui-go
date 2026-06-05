@@ -15,10 +15,16 @@ coverage.out
 
 bin/
 
-# Auto-generated CLI docs (built in CI)
-docs/cli/
+# Stray binaries from `go build ./internal/tools/...`
+/docgen
+/readmegen
 
-# MkDocs build output
-site/
+# Auto-generated CLI docs (built in CI / via `make docs-cli`)
+docs/src/content/docs/reference/cli/
+
+# Astro / Starlight docs site
+docs/node_modules/
+docs/dist/
+docs/.astro/
 
 dist
