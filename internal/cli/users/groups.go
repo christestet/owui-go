@@ -14,7 +14,7 @@ import (
 
 // localGroupCompletionFunc returns a flag completion function for local group names.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -122,7 +122,7 @@ var addToGroupCmd = &cobra.Command{
 			resolvedNames = append(resolvedNames, u.Name)
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name))
 		if err != nil {
 			return err
 		}
@@ -259,7 +259,7 @@ var removeFromGroupCmd = &cobra.Command{
 			resolvedNames = append(resolvedNames, u.Name)
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name))
 		if err != nil {
 			return err
 		}

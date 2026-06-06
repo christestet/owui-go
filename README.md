@@ -115,7 +115,6 @@ owui models set-status disable gpt-4o
 
 # Change model visibility
 owui models set-visibility public claude-sonnet
-owui models set-visibility private gpt-4o
 
 # Add a model to groups
 owui models add-to-group --model gpt-4o --groups developers backend-team
@@ -168,7 +167,7 @@ Run `make docs-readme` to refresh this section.
 | `owui models list` | List all models |
 | `owui models remove-from-group` | Remove a model from group(s) |
 | `owui models set-status` | Enable or disable models |
-| `owui models set-visibility` | Set model visibility to public or private |
+| `owui models set-visibility` | Make models public (visible to everyone) |
 | `owui models show` | Show model details |
 | `owui pipelines` | Manage pipelines and valves in an Open WebUI instance |
 | `owui pipelines add` | Add a pipeline registration |

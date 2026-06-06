@@ -129,7 +129,7 @@ func (b *batchModelAction) runE(cmd *cobra.Command, args []string) error {
 		names = append(names, m.Name)
 	}
 
-	confirmed, err := prompts.ConfirmYN(b.confirmMsgFn(action, len(resolvedModels), names))
+	confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), b.confirmMsgFn(action, len(resolvedModels), names))
 	if err != nil {
 		return err
 	}

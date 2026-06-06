@@ -465,17 +465,19 @@ func TestValidateInstanceInput(t *testing.T) {
 		name        string
 		instName    string
 		instanceURL string
+		apiKey      string
 		wantErr     string
 	}{
-		{"empty name", "", "http://localhost", "instance name is required"},
-		{"empty url", "test", "", "instance URL is required"},
-		{"invalid url", "test", "not-a-url", "invalid URL"},
-		{"valid input", "test", "http://localhost:3000", ""},
+		{"empty name", "", "http://localhost", "sk-test", "instance name is required"},
+		{"empty url", "test", "", "sk-test", "instance URL is required"},
+		{"invalid url", "test", "not-a-url", "sk-test", "invalid URL"},
+		{"empty api key", "test", "http://localhost:3000", "", "API key is required"},
+		{"valid input", "test", "http://localhost:3000", "sk-test", ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateInstanceInput(tt.instName, tt.instanceURL)
+			err := validateInstanceInput(tt.instName, tt.instanceURL, tt.apiKey)
 			if tt.wantErr == "" {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)

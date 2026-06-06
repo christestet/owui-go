@@ -40,7 +40,7 @@ func userCompletionFunc() func(cmd *cobra.Command, args []string, toComplete str
 		if len(args) != 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		client := shared.ResolveClientForCompletion()
+		client := shared.ResolveClientForCompletion(cmd)
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -61,7 +61,7 @@ func userCompletionFunc() func(cmd *cobra.Command, args []string, toComplete str
 // multiUserCompletionFunc returns a ValidArgsFunction that allows completing multiple user names.
 func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client := shared.ResolveClientForCompletion()
+		client := shared.ResolveClientForCompletion(cmd)
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -206,7 +206,7 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm deleting user %s?", user.Name))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm deleting user %s?", user.Name))
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ var updateRoleCmd = &cobra.Command{
 			}
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating user %s's role to %s?", user.Name, role))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm updating user %s's role to %s?", user.Name, role))
 		if err != nil {
 			return err
 		}

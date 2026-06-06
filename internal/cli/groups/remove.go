@@ -66,7 +66,7 @@ var removeCmd = &cobra.Command{
 			}
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm deleting %d group(s): %s?", len(selectedNames), strings.Join(selectedNames, ", ")))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm deleting %d group(s): %s?", len(selectedNames), strings.Join(selectedNames, ", ")))
 		if err != nil {
 			return err
 		}

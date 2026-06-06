@@ -3,6 +3,7 @@ package instances
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/huh"
@@ -29,15 +30,24 @@ var addCmd = &cobra.Command{
 		instanceURL, _ := cmd.Flags().GetString("url")
 		apiKey, _ := cmd.Flags().GetString("api-key")
 
+		// Trim surrounding whitespace; a stray newline pasted into a key or URL
+		// silently breaks auth or request building otherwise.
+		name = strings.TrimSpace(name)
+		instanceURL = strings.TrimSpace(instanceURL)
+		apiKey = strings.TrimSpace(apiKey)
+
 		// If any required field is missing, run interactive mode
 		if name == "" || instanceURL == "" || apiKey == "" {
 			err := runAddWizard(&name, &instanceURL, &apiKey)
 			if err != nil {
 				return fmt.Errorf("interactive input cancelled: %w", err)
 			}
+			name = strings.TrimSpace(name)
+			instanceURL = strings.TrimSpace(instanceURL)
+			apiKey = strings.TrimSpace(apiKey)
 		}
 
-		if err := validateInstanceInput(name, instanceURL); err != nil {
+		if err := validateInstanceInput(name, instanceURL, apiKey); err != nil {
 			return err
 		}
 
@@ -77,12 +87,15 @@ func init() {
 	addCmd.Flags().String("api-key", "", "API key for authentication")
 }
 
-func validateInstanceInput(name, instanceURL string) error {
+func validateInstanceInput(name, instanceURL, apiKey string) error {
 	if name == "" {
 		return fmt.Errorf("instance name is required")
 	}
 	if instanceURL == "" {
 		return fmt.Errorf("instance URL is required")
+	}
+	if apiKey == "" {
+		return fmt.Errorf("API key is required")
 	}
 	u, err := url.ParseRequestURI(instanceURL)
 	if err != nil {

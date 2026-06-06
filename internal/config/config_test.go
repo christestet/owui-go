@@ -70,6 +70,43 @@ func TestConfigLoadAndSave(t *testing.T) {
 	}
 }
 
+func TestConfigSavePermissions(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "owui-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	origUserConfigDir := UserConfigDirFunc
+	UserConfigDirFunc = func() (string, error) {
+		return tmpDir, nil
+	}
+	defer func() {
+		UserConfigDirFunc = origUserConfigDir
+	}()
+
+	cfg := defaultConfig()
+	cfg.Instances = map[string]InstanceConfig{
+		"test-instance": {URL: "http://localhost:3000", APIKey: "secret"},
+	}
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("Save() failed: %v", err)
+	}
+
+	path, err := ConfigPath()
+	if err != nil {
+		t.Fatalf("ConfigPath() failed: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat config: %v", err)
+	}
+	// The config stores plaintext API keys; it must not be group/world readable.
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("expected config permissions 0600, got %o", perm)
+	}
+}
+
 func TestConfigPath(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "owui-test-*")
 	if err != nil {

@@ -71,7 +71,7 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm deleting registration '%s' (urlIdx=%d)?", reg.RegistrationID, reg.URLIdx))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm deleting registration '%s' (urlIdx=%d)?", reg.RegistrationID, reg.URLIdx))
 		if err != nil {
 			return err
 		}

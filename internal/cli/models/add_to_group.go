@@ -168,7 +168,7 @@ Two modes:
 			confirmMsg = fmt.Sprintf("Confirm adding %d model(s) to group '%s': %s?", len(resolvedModels), resolvedGroups[0].Name, strings.Join(modelNames, ", "))
 		}
 
-		confirmed, err := prompts.ConfirmYN(confirmMsg)
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), confirmMsg)
 		if err != nil {
 			return err
 		}

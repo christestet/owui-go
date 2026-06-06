@@ -134,7 +134,7 @@ var removeFromGroupCmd = &cobra.Command{
 			}
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", ")))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", ")))
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func init() {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		// Smart completion: only show groups the model is assigned to
-		client := shared.ResolveClientForCompletion()
+		client := shared.ResolveClientForCompletion(cmd)
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}

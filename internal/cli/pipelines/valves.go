@@ -139,7 +139,7 @@ var valvesUpdateCmd = &cobra.Command{
 			return fmt.Errorf("invalid --data JSON: expected object")
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating valves for pipe '%s' (urlIdx=%d)?", target.pipe.PipeID, target.pipe.URLIdx))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm updating valves for pipe '%s' (urlIdx=%d)?", target.pipe.PipeID, target.pipe.URLIdx))
 		if err != nil {
 			return err
 		}
