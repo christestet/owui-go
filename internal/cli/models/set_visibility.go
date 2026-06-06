@@ -41,10 +41,7 @@ var visibilityAction = &batchModelAction{
 		return nil
 	},
 	completionFilterFn: func(action string) func(api.ModelAccessResponse) bool {
-		if action == "public" {
-			return func(m api.ModelAccessResponse) bool { return isPrivate(m) }
-		}
-		return nil
+		return func(m api.ModelAccessResponse) bool { return isPrivate(m) }
 	},
 }
 

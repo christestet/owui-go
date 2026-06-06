@@ -3,7 +3,6 @@ package pipelines
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/charmbracelet/huh"
@@ -46,7 +45,7 @@ var addCmd = &cobra.Command{
 		if !cmd.Flags().Changed("url-idx") {
 			customSet := false
 			if interactive {
-				custom, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Use custom urlIdx?")
+				custom, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), "Use custom urlIdx?")
 				if err != nil {
 					return err
 				}

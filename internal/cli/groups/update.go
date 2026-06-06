@@ -3,7 +3,7 @@ package groups
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -69,7 +69,7 @@ var updateCmd = &cobra.Command{
 		// Interactive mode if no flags provided
 		flagsProvided := cmd.Flags().Changed("name") || cmd.Flags().Changed("description") || cmd.Flags().Changed("permissions")
 		if !flagsProvided {
-			if err := runUpdateWizard(fullGroup, &newName, &newDescription, &permissionsStr); err != nil {
+			if err := runUpdateWizard(cmd.InOrStdin(), cmd.OutOrStdout(), fullGroup, &newName, &newDescription, &permissionsStr); err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
@@ -122,7 +122,7 @@ func init() {
 	updateCmd.Flags().String("permissions", "", "new group permissions as JSON string")
 }
 
-func runUpdateWizard(group *api.Group, name, description, permissions *string) error {
+func runUpdateWizard(in io.Reader, out io.Writer, group *api.Group, name, description, permissions *string) error {
 	*name = group.Name
 	*description = group.Description
 
@@ -140,7 +140,7 @@ func runUpdateWizard(group *api.Group, name, description, permissions *string) e
 		return err
 	}
 
-	setPermissions, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Update permissions?")
+	setPermissions, err := prompts.ConfirmYN(in, out, "Update permissions?")
 	if err != nil {
 		return err
 	}

@@ -56,7 +56,11 @@ func fetchAllPages[T any](fetchPage func(page int) ([]T, int, error), maxPages i
 		return nil, err
 	}
 
-	all := make([]T, 0, total)
+	capacity := len(firstItems)
+	for _, items := range rest {
+		capacity += len(items)
+	}
+	all := make([]T, 0, capacity)
 	all = append(all, firstItems...)
 	for _, items := range rest {
 		all = append(all, items...)

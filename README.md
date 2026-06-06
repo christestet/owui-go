@@ -115,7 +115,6 @@ owui models set-status disable gpt-4o
 
 # Change model visibility
 owui models set-visibility public claude-sonnet
-owui models set-visibility private gpt-4o
 
 # Add a model to groups
 owui models add-to-group --model gpt-4o --groups developers backend-team

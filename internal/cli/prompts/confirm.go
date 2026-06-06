@@ -12,7 +12,9 @@ import (
 // treated as "no". Taking in/out as parameters keeps the prompt redirectable and
 // testable; callers with a *cobra.Command pass cmd.InOrStdin()/cmd.OutOrStdout().
 func ConfirmYN(in io.Reader, out io.Writer, question string) (bool, error) {
-	fmt.Fprintf(out, "%s [y/N]: ", question)
+	if _, err := fmt.Fprintf(out, "%s [y/N]: ", question); err != nil {
+		return false, err
+	}
 	scanner := bufio.NewScanner(in)
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {

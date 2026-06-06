@@ -1,9 +1,16 @@
 package prompts
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
+
+type failingWriter struct{}
+
+func (failingWriter) Write(p []byte) (int, error) {
+	return 0, errors.New("write failed")
+}
 
 func TestConfirmYN(t *testing.T) {
 	tests := []struct {
@@ -33,5 +40,15 @@ func TestConfirmYN(t *testing.T) {
 				t.Errorf("expected prompt written to out, got %q", out.String())
 			}
 		})
+	}
+}
+
+func TestConfirmYN_ReturnsPromptWriteError(t *testing.T) {
+	got, err := ConfirmYN(strings.NewReader("y\n"), failingWriter{}, "Proceed?")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got {
+		t.Fatal("expected false on prompt write error")
 	}
 }

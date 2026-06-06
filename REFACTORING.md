@@ -123,8 +123,8 @@ instance if available.
   `Authorization` header to the typically-unauthenticated `/health`. Harmless;
   drop for clarity.
 - **Background update-check race (full fix):** Wave 1 only *shrank* the
-  lost-update window (`internal/cli/root/root.go`). A complete fix needs
-  serialized saves or a file lock, or persisting `LastUpdateCheck` via a narrow
+  lost-update window (`internal/cli/root/root.go`). A complete fix needs saves
+  to be serialized or a file lock, or persisting `LastUpdateCheck` via a narrow
   read-modify-write that doesn't round-trip the whole config.
 
 ---

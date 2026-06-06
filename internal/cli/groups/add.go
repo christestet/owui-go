@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -33,7 +33,7 @@ var addCmd = &cobra.Command{
 
 		// Interactive mode if required fields are missing
 		if name == "" || description == "" {
-			if err := runAddWizard(ctx, client, &name, &description, &permissionsStr, &usersFlag); err != nil {
+			if err := runAddWizard(ctx, cmd.InOrStdin(), cmd.OutOrStdout(), client, &name, &description, &permissionsStr, &usersFlag); err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
@@ -104,7 +104,7 @@ func init() {
 	addCmd.Flags().StringSlice("users", nil, "usernames to add to the group (only role 'user')")
 }
 
-func runAddWizard(ctx context.Context, client *api.Client, name, description, permissions *string, users *[]string) error {
+func runAddWizard(ctx context.Context, in io.Reader, out io.Writer, client *api.Client, name, description, permissions *string, users *[]string) error {
 	// Basic fields
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -121,7 +121,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 	}
 
 	// Ask about adding users
-	addUsers, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Add users to this group?")
+	addUsers, err := prompts.ConfirmYN(in, out, "Add users to this group?")
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 
 		eligibleUsers := shared.FilterUsersByRole(allUsers, "user")
 		if len(eligibleUsers) == 0 {
-			fmt.Println("No eligible users found (only users with role 'user' can be added).")
+			fmt.Fprintln(out, "No eligible users found (only users with role 'user' can be added).")
 		} else {
 			options := make([]huh.Option[string], 0, len(eligibleUsers))
 			for _, u := range eligibleUsers {
@@ -149,7 +149,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 	}
 
 	// Ask about permissions
-	setPermissions, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Set custom permissions?")
+	setPermissions, err := prompts.ConfirmYN(in, out, "Set custom permissions?")
 	if err != nil {
 		return err
 	}
