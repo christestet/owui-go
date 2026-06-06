@@ -48,7 +48,7 @@ var uploadCmd = &cobra.Command{
 		if !cmd.Flags().Changed("url-idx") {
 			customSet := false
 			if interactive {
-				custom, err := prompts.ConfirmYN("Use custom urlIdx?")
+				custom, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Use custom urlIdx?")
 				if err != nil {
 					return err
 				}

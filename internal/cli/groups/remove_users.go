@@ -127,7 +127,7 @@ var removeUsersCmd = &cobra.Command{
 			resolvedNames = append(resolvedNames, u.Name)
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name))
 		if err != nil {
 			return err
 		}

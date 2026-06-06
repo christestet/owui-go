@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -120,7 +121,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 	}
 
 	// Ask about adding users
-	addUsers, err := prompts.ConfirmYN("Add users to this group?")
+	addUsers, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Add users to this group?")
 	if err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func runAddWizard(ctx context.Context, client *api.Client, name, description, pe
 	}
 
 	// Ask about permissions
-	setPermissions, err := prompts.ConfirmYN("Set custom permissions?")
+	setPermissions, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Set custom permissions?")
 	if err != nil {
 		return err
 	}

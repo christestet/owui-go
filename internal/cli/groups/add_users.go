@@ -98,7 +98,7 @@ var addUsersCmd = &cobra.Command{
 			resolvedNames = append(resolvedNames, u.Name)
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name))
 		if err != nil {
 			return err
 		}

@@ -78,7 +78,7 @@ func modelCompletionFunc(cmd *cobra.Command, args []string, toComplete string) (
 	if len(args) != 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -99,7 +99,7 @@ func modelCompletionFunc(cmd *cobra.Command, args []string, toComplete string) (
 // filterFn determines which models to include in completions.
 func smartModelCompletionFunc(filterFn func(api.ModelAccessResponse) bool) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client := shared.ResolveClientForCompletion()
+		client := shared.ResolveClientForCompletion(cmd)
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -129,7 +129,7 @@ func smartModelCompletionFunc(filterFn func(api.ModelAccessResponse) bool) func(
 
 // multiModelCompletionFunc completes multiple model IDs, excluding already-selected ones.
 func multiModelCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -155,7 +155,7 @@ func multiModelCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 
 // localGroupCompletionFunc completes only local group names.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

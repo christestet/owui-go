@@ -119,6 +119,14 @@ func backgroundUpdateCheck() {
 	if err != nil {
 		return
 	}
+
+	// Re-load config before saving: a foreground command may have mutated and
+	// saved it during the (multi-second) network call above. Persisting only the
+	// timestamp on the freshest copy shrinks the lost-update window to the gap
+	// between this reload and Save. It is a mitigation, not a lock.
+	if fresh, err := config.Load(); err == nil {
+		cfg = fresh
+	}
 	cfg.Cli.LastUpdateCheck = time.Now().UTC().Format(time.RFC3339)
 	_ = cfg.Save()
 

@@ -40,7 +40,7 @@ func pipeCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -87,7 +87,7 @@ func registrationCompletionFunc(cmd *cobra.Command, args []string, toComplete st
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

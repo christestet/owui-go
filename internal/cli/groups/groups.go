@@ -51,7 +51,7 @@ func filterOAuthGroups(groups []api.Group) []api.Group {
 
 // localGroupCompletionFunc completes only local group names.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -70,7 +70,7 @@ func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 
 // multiLocalGroupCompletionFunc completes multiple local group names, excluding already-selected ones.
 func multiLocalGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -99,7 +99,7 @@ func allGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	if len(args) != 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client := shared.ResolveClientForCompletion()
+	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -119,7 +119,7 @@ func allGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 // multiUserCompletionFunc returns a ValidArgsFunction that completes multiple user names filtered by role.
 func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client := shared.ResolveClientForCompletion()
+		client := shared.ResolveClientForCompletion(cmd)
 		if client == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}

@@ -3,6 +3,7 @@ package groups
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -97,7 +98,7 @@ var updateCmd = &cobra.Command{
 			Permissions: permissions,
 		}
 
-		confirmed, err := prompts.ConfirmYN(fmt.Sprintf("Confirm updating group '%s'?", group.Name))
+		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm updating group '%s'?", group.Name))
 		if err != nil {
 			return err
 		}
@@ -139,7 +140,7 @@ func runUpdateWizard(group *api.Group, name, description, permissions *string) e
 		return err
 	}
 
-	setPermissions, err := prompts.ConfirmYN("Update permissions?")
+	setPermissions, err := prompts.ConfirmYN(os.Stdin, os.Stdout, "Update permissions?")
 	if err != nil {
 		return err
 	}
