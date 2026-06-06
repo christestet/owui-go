@@ -112,6 +112,8 @@ func (c *Config) Save() error {
 
 	v := viper.New()
 	v.SetConfigType("json")
+	// The config file stores plaintext API keys, so restrict it to the owner.
+	v.SetConfigPermissions(0o600)
 	v.Set("cli", c.Cli)
 	v.Set("active_instance", c.ActiveInstance)
 	v.Set("instances", c.Instances)
@@ -123,6 +125,11 @@ func (c *Config) Save() error {
 	tmpPath := filepath.Join(filepath.Dir(path), "config.tmp.json")
 	if err := v.WriteConfigAs(tmpPath); err != nil {
 		return fmt.Errorf("writing config: %w", err)
+	}
+	// Guard against a pre-existing tmp file with looser permissions and against
+	// any umask interaction, so the renamed config is always owner-only.
+	if err := os.Chmod(tmpPath, 0o600); err != nil {
+		return fmt.Errorf("securing config permissions: %w", err)
 	}
 	return os.Rename(tmpPath, path)
 }

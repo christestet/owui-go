@@ -168,7 +168,7 @@ Run `make docs-readme` to refresh this section.
 | `owui models list` | List all models |
 | `owui models remove-from-group` | Remove a model from group(s) |
 | `owui models set-status` | Enable or disable models |
-| `owui models set-visibility` | Set model visibility to public or private |
+| `owui models set-visibility` | Make models public (visible to everyone) |
 | `owui models show` | Show model details |
 | `owui pipelines` | Manage pipelines and valves in an Open WebUI instance |
 | `owui pipelines add` | Add a pipeline registration |
