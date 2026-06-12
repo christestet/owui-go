@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.3](https://github.com/christestet/owui-go/compare/v0.9.2...v0.9.3) (2026-06-12)
+
+
+### Bug Fixes
+
+* add relay-style go checks ([#49](https://github.com/christestet/owui-go/issues/49)) ([195412d](https://github.com/christestet/owui-go/commit/195412d9c4cdde52e166beb4767197da57389a61))
+* use patched go toolchain ([#51](https://github.com/christestet/owui-go/issues/51)) ([78e8c9f](https://github.com/christestet/owui-go/commit/78e8c9f94eb705d15cb2186a6bf2e91423262209))
+
 ## [0.9.2](https://github.com/christestet/owui-go/compare/v0.9.1...v0.9.2) (2026-06-06)
 
 
