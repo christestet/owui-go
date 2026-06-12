@@ -89,12 +89,12 @@ var uploadCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully uploaded pipeline file '%s' to urlIdx=%d\n", filePath, urlIdx)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully uploaded pipeline file '%s' to urlIdx=%d\n", filePath, urlIdx)
+		return err
 	},
 }
 

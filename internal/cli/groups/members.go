@@ -32,8 +32,8 @@ var membersCmd = &cobra.Command{
 		}
 
 		if len(groups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
+			return err
 		}
 
 		var groupName string
@@ -81,43 +81,67 @@ var membersCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
 		// Pretty output
 		out := cmd.OutOrStdout()
-		fmt.Fprintf(out, "Group: %s\n", fullGroup.Name)
-		fmt.Fprintf(out, "Description: %s\n", fullGroup.Description)
-		fmt.Fprintf(out, "Type: %s\n", groupType(*fullGroup))
+		if _, err := fmt.Fprintf(out, "Group: %s\n", fullGroup.Name); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Description: %s\n", fullGroup.Description); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Type: %s\n", groupType(*fullGroup)); err != nil {
+			return err
+		}
 
 		memberCount := len(members)
 		if fullGroup.MemberCount != nil {
 			memberCount = *fullGroup.MemberCount
 		}
-		fmt.Fprintf(out, "Members: %d\n", memberCount)
+		if _, err := fmt.Fprintf(out, "Members: %d\n", memberCount); err != nil {
+			return err
+		}
 
 		if len(fullGroup.Permissions) > 0 && string(fullGroup.Permissions) != "null" {
-			fmt.Fprintf(out, "Permissions: %s\n", string(fullGroup.Permissions))
+			if _, err := fmt.Fprintf(out, "Permissions: %s\n", string(fullGroup.Permissions)); err != nil {
+				return err
+			}
 		}
 
 		if fullGroup.CreatedAt > 0 {
-			fmt.Fprintf(out, "Created: %s\n", time.Unix(fullGroup.CreatedAt, 0).Format("2006-01-02 15:04:05"))
+			if _, err := fmt.Fprintf(out, "Created: %s\n", time.Unix(fullGroup.CreatedAt, 0).Format("2006-01-02 15:04:05")); err != nil {
+				return err
+			}
 		}
 		if fullGroup.UpdatedAt > 0 {
-			fmt.Fprintf(out, "Updated: %s\n", time.Unix(fullGroup.UpdatedAt, 0).Format("2006-01-02 15:04:05"))
+			if _, err := fmt.Fprintf(out, "Updated: %s\n", time.Unix(fullGroup.UpdatedAt, 0).Format("2006-01-02 15:04:05")); err != nil {
+				return err
+			}
 		}
 
 		if len(members) > 0 {
-			fmt.Fprintln(out)
-			w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-			fmt.Fprintln(w, "NAME\tEMAIL\tROLE")
-			for _, m := range members {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", m.Name, m.Email, m.Role)
+			if _, err := fmt.Fprintln(out); err != nil {
+				return err
 			}
-			w.Flush()
+			w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
+			if _, err := fmt.Fprintln(w, "NAME\tEMAIL\tROLE"); err != nil {
+				return err
+			}
+			for _, m := range members {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", m.Name, m.Email, m.Role); err != nil {
+					return err
+				}
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
 		} else {
-			fmt.Fprintln(out, "\nNo members in this group.")
+			if _, err := fmt.Fprintln(out, "\nNo members in this group."); err != nil {
+				return err
+			}
 		}
 
 		return nil

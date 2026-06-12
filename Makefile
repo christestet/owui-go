@@ -1,13 +1,20 @@
 # Makefile
-.PHONY: build test lint clean run typecheck deps docs-cli docs-readme docs-readme-check docs docs-deps docs-site docs-dev
+.PHONY: check build test fmt vet lint vuln clean run typecheck deps docs-cli docs-readme docs-readme-check docs docs-deps docs-site docs-dev
 
 # Variables
 BINARY_NAME=owui
 BUILD_DIR=bin
+BIN_DIR=$(CURDIR)/bin
 GO=go
 GOFLAGS=-v
 DOCS_DIR=docs
 DOCS_CLI_DIR=$(DOCS_DIR)/src/content/docs/reference/cli
+GOLANGCI_LINT_VERSION=v2.12.2
+GOLANGCI_LINT=$(BIN_DIR)/golangci-lint
+GOVULNCHECK_VERSION=v1.3.0
+GOVULNCHECK=$(BIN_DIR)/govulncheck
+
+check: fmt vet lint test vuln docs-readme-check
 
 # Build the application
 build:
@@ -15,7 +22,7 @@ build:
 
 # Run tests
 test:
-	$(GO) test -v -race -coverprofile=coverage.out ./...
+	$(GO) test -v -race -tags='!interactive' -coverprofile=coverage.out ./...
 
 # Run the application
 run:
@@ -33,10 +40,23 @@ deps:
 
 # Format code
 fmt:
-	$(GO) fmt ./...
+	@out=$$(gofmt -l . | grep -v '^bin/' || true); \
+	if [ -n "$$out" ]; then echo "gofmt needed for:"; echo "$$out"; exit 1; fi
 
-lint:
+vet:
 	$(GO) vet ./...
+
+$(GOLANGCI_LINT):
+	GOBIN=$(BIN_DIR) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+lint: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run
+
+$(GOVULNCHECK):
+	GOBIN=$(BIN_DIR) $(GO) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
+vuln: $(GOVULNCHECK)
+	$(GOVULNCHECK) ./...
 
 typecheck:
 	$(GO) tool type-check ./...

@@ -82,40 +82,48 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
 		if len(models) == 0 {
 			if filterType != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "No models found matching filter %q.\n", filterType)
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "No models found matching filter %q.\n", filterType)
+				return err
 			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "No models found.")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No models found.")
+				return err
 			}
-			return nil
 		}
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "NAME\tID\tBASE MODEL\tSTATUS\tVISIBILITY\tGRANTS\tUPDATED")
+		if _, err := fmt.Fprintln(w, "NAME\tID\tBASE MODEL\tSTATUS\tVISIBILITY\tGRANTS\tUPDATED"); err != nil {
+			return err
+		}
 		for _, m := range models {
 			updated := "-"
 			if m.UpdatedAt > 0 {
 				updated = time.Unix(m.UpdatedAt, 0).Format("2006-01-02")
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\n",
 				m.Name, m.ID, m.BaseModelID,
 				modelStatus(m), modelVisibility(m),
 				len(m.AccessGrants), updated,
-			)
+			); err != nil {
+				return err
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
 
 		if filterType != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d model(s) matching filter %q.\n", len(models), filterType)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d model(s) matching filter %q.\n", len(models), filterType)
+			return err
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d model(s).\n", len(models))
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d model(s).\n", len(models))
+			return err
 		}
-		return nil
 	},
 }
 

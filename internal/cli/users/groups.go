@@ -58,8 +58,8 @@ var addToGroupCmd = &cobra.Command{
 		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
+			return err
 		}
 
 		// Filter to only role=user
@@ -71,8 +71,8 @@ var addToGroupCmd = &cobra.Command{
 		} else {
 			// Interactive multi-select
 			if len(eligibleUsers) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No eligible users found (only users with role 'user' can be added to groups).")
-				return nil
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No eligible users found (only users with role 'user' can be added to groups).")
+				return err
 			}
 			options := make([]huh.Option[string], 0, len(eligibleUsers))
 			for _, u := range eligibleUsers {
@@ -85,8 +85,8 @@ var addToGroupCmd = &cobra.Command{
 		}
 
 		if len(selectedNames) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
+			return err
 		}
 
 		// Resolve group
@@ -127,16 +127,16 @@ var addToGroupCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		if err := client.AddUsersToGroup(ctx, group.ID, userIDs); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully added %s to group %s\n", strings.Join(resolvedNames, ", "), group.Name)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully added %s to group %s\n", strings.Join(resolvedNames, ", "), group.Name)
+		return err
 	},
 }
 
@@ -166,8 +166,8 @@ var removeFromGroupCmd = &cobra.Command{
 		// Nur lokale Gruppen zulassen (keine OAuth-Gruppen)
 		localGroups := shared.FilterLocalGroups(groups)
 		if len(localGroups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
+			return err
 		}
 
 		// --- Gruppe auswählen ---
@@ -194,8 +194,8 @@ var removeFromGroupCmd = &cobra.Command{
 			return fmt.Errorf("failed to fetch users of group %s: %w", group.Name, err)
 		}
 		if len(groupExport.UserIDs) == 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "No users in group %s.\n", group.Name)
-			return nil
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "No users in group %s.\n", group.Name)
+			return err
 		}
 		// Nutzerobjekte zu den IDs suchen
 		userByID := make(map[string]api.User)
@@ -224,13 +224,13 @@ var removeFromGroupCmd = &cobra.Command{
 				}
 			}
 			if len(selectedNames) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No valid users specified (must be members of the group with role 'user').")
-				return nil
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No valid users specified (must be members of the group with role 'user').")
+				return err
 			}
 		} else {
 			if len(eligibleUsers) == 0 {
-				fmt.Fprintf(cmd.OutOrStdout(), "No eligible users found in group %s.\n", group.Name)
-				return nil
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "No eligible users found in group %s.\n", group.Name)
+				return err
 			}
 			options := make([]huh.Option[string], 0, len(eligibleUsers))
 			for _, u := range eligibleUsers {
@@ -243,8 +243,8 @@ var removeFromGroupCmd = &cobra.Command{
 		}
 
 		if len(selectedNames) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
+			return err
 		}
 
 		// Resolve user names to IDs
@@ -264,16 +264,16 @@ var removeFromGroupCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		if err := client.RemoveUsersFromGroup(ctx, group.ID, userIDs); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully removed %s from group %s\n", strings.Join(resolvedNames, ", "), group.Name)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully removed %s from group %s\n", strings.Join(resolvedNames, ", "), group.Name)
+		return err
 	},
 }
 

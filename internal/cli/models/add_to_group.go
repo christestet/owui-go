@@ -39,8 +39,8 @@ Two modes:
 		localGroups := shared.FilterLocalGroups(allGroups)
 
 		if len(localGroups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
+			return err
 		}
 
 		modelFlag, _ := cmd.Flags().GetString("model")
@@ -127,8 +127,8 @@ Two modes:
 		}
 
 		if len(modelIDs) == 0 || len(groupNames) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No models or groups selected.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No models or groups selected.")
+			return err
 		}
 
 		// Resolve models
@@ -173,8 +173,8 @@ Two modes:
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		// Apply changes
@@ -198,7 +198,9 @@ Two modes:
 					}
 				}
 				if alreadyGranted {
-					fmt.Fprintf(cmd.OutOrStdout(), "Warning: Model '%s' already has access grant for group '%s', skipping.\n", m.Name, g.Name)
+					if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Warning: Model '%s' already has access grant for group '%s', skipping.\n", m.Name, g.Name); err != nil {
+						return err
+					}
 					continue
 				}
 
@@ -219,7 +221,9 @@ Two modes:
 			}
 
 			for _, g := range resolvedGroups {
-				fmt.Fprintf(cmd.OutOrStdout(), "Successfully added model '%s' to group '%s'\n", m.Name, g.Name)
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Successfully added model '%s' to group '%s'\n", m.Name, g.Name); err != nil {
+					return err
+				}
 			}
 		}
 

@@ -33,8 +33,8 @@ var showPermissionsCmd = &cobra.Command{
 			return err
 		}
 		if len(groups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
+			return err
 		}
 
 		var groupName string
@@ -86,20 +86,24 @@ func renderShowPermissionsJSON(cmd *cobra.Command, group *api.Group) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	return err
 }
 
 func renderShowPermissionsPretty(cmd *cobra.Command, group *api.Group) error {
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintf(out, "Group: %s (%s)\n", group.Name, group.ID)
-	fmt.Fprintln(out, "Permissions:")
+	if _, err := fmt.Fprintf(out, "Group: %s (%s)\n", group.Name, group.ID); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(out, "Permissions:"); err != nil {
+		return err
+	}
 
 	permissions := normalizedPermissions(group.Permissions)
 	if string(permissions) == "null" {
-		fmt.Fprintln(out, "No permissions set.")
-		return nil
+		_, err := fmt.Fprintln(out, "No permissions set.")
+		return err
 	}
 
 	rows, err := permissionRows(permissions)
@@ -107,17 +111,20 @@ func renderShowPermissionsPretty(cmd *cobra.Command, group *api.Group) error {
 		return err
 	}
 	if len(rows) == 0 {
-		fmt.Fprintln(out, "No permissions set.")
-		return nil
+		_, err := fmt.Fprintln(out, "No permissions set.")
+		return err
 	}
 
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "PERMISSION\tVALUE")
-	for _, row := range rows {
-		fmt.Fprintf(w, "%s\t%s\n", row.Path, row.Value)
+	if _, err := fmt.Fprintln(w, "PERMISSION\tVALUE"); err != nil {
+		return err
 	}
-	w.Flush()
-	return nil
+	for _, row := range rows {
+		if _, err := fmt.Fprintf(w, "%s\t%s\n", row.Path, row.Value); err != nil {
+			return err
+		}
+	}
+	return w.Flush()
 }
 
 func normalizedPermissions(raw json.RawMessage) json.RawMessage {

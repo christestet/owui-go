@@ -52,31 +52,34 @@ var listCmd = &cobra.Command{
 		})
 
 		if outputFormat == "json" {
+			// #nosec G117 -- APIKey is already redacted before marshaling.
 			b, err := json.MarshalIndent(safes, "", "  ")
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
 		if len(safes) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No instances configured.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No instances configured.")
+			return err
 		}
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "NAME\tURL\tAPI KEY\tACTIVE")
+		if _, err := fmt.Fprintln(w, "NAME\tURL\tAPI KEY\tACTIVE"); err != nil {
+			return err
+		}
 		for _, s := range safes {
 			activeMark := ""
 			if s.Active {
 				activeMark = "*"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", s.Name, s.URL, s.APIKey, activeMark)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", s.Name, s.URL, s.APIKey, activeMark); err != nil {
+				return err
+			}
 		}
-		w.Flush()
-
-		return nil
+		return w.Flush()
 	},
 }
 
@@ -118,8 +121,8 @@ var useCmd = &cobra.Command{
 			return fmt.Errorf("failed to save config: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Switched to instance %q\n", instanceName)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Switched to instance %q\n", instanceName)
+		return err
 	},
 }
 
@@ -168,8 +171,8 @@ var removeCmd = &cobra.Command{
 			return fmt.Errorf("failed to save config: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Instance %q removed\n", instanceName)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Instance %q removed\n", instanceName)
+		return err
 	},
 }
 

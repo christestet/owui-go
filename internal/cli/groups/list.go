@@ -50,35 +50,43 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
 		if len(groups) == 0 {
 			if filterType != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "No groups found matching filter %q.\n", filterType)
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "No groups found matching filter %q.\n", filterType)
+				return err
 			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
+				return err
 			}
-			return nil
 		}
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "NAME\tDESCRIPTION\tMEMBERS\tTYPE")
+		if _, err := fmt.Fprintln(w, "NAME\tDESCRIPTION\tMEMBERS\tTYPE"); err != nil {
+			return err
+		}
 		for _, g := range groups {
 			members := "-"
 			if g.MemberCount != nil {
 				members = fmt.Sprintf("%d", *g.MemberCount)
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", g.Name, g.Description, members, groupType(g))
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", g.Name, g.Description, members, groupType(g)); err != nil {
+				return err
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
 
 		if filterType != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d group(s) matching filter %q.\n", len(groups), filterType)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d group(s) matching filter %q.\n", len(groups), filterType)
+			return err
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d group(s).\n", len(groups))
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d group(s).\n", len(groups))
+			return err
 		}
-		return nil
 	},
 }

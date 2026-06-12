@@ -144,8 +144,8 @@ var valvesUpdateCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		resp, err := target.client.UpdatePipelineValvesRaw(target.ctx, target.pipe.PipeID, target.pipe.URLIdx, payload)
@@ -163,12 +163,12 @@ var valvesUpdateCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated valves for pipe '%s'\n", target.pipe.PipeID)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated valves for pipe '%s'\n", target.pipe.PipeID)
+		return err
 	},
 }
 
@@ -177,8 +177,8 @@ func renderUntyped(cmd *cobra.Command, value any) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	return err
 }
 
 func init() {

@@ -19,7 +19,7 @@ type ModelCapabilities struct {
 type ModelMeta struct {
 	ProfileImageURL string            `json:"profile_image_url,omitempty"`
 	Description     string            `json:"description,omitempty"`
-	Capabilities    ModelCapabilities  `json:"capabilities,omitempty"`
+	Capabilities    ModelCapabilities `json:"capabilities,omitempty"`
 	Tags            []ModelTag        `json:"tags,omitempty"`
 }
 

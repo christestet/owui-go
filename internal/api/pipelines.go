@@ -117,11 +117,14 @@ func (c *Client) DeletePipelineRegistration(ctx context.Context, form DeletePipe
 
 // UploadPipelineFileRaw uploads a pipeline file as multipart/form-data.
 func (c *Client) UploadPipelineFileRaw(ctx context.Context, filePath string, urlIdx int) (any, error) {
+	// #nosec G304 -- filePath is an explicit CLI upload argument.
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("opening pipeline file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -152,7 +155,9 @@ func (c *Client) UploadPipelineFileRaw(ctx context.Context, filePath string, url
 	if err != nil {
 		return nil, fmt.Errorf("error sending upload request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
 	if err != nil {

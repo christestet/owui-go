@@ -13,13 +13,11 @@ import (
 )
 
 var removeFromGroupCmd = &cobra.Command{
-	Use:   "remove-from-group [model_id]",
-	Short: "Remove a model from group(s)",
-	Long:  `Remove a model from one or more groups, revoking group members' access.`,
-	Args:  cobra.MaximumNArgs(1),
-	ValidArgsFunction: smartModelCompletionFunc(func(m api.ModelAccessResponse) bool {
-		return isPrivate(m) // Only show models with access grants
-	}),
+	Use:               "remove-from-group [model_id]",
+	Short:             "Remove a model from group(s)",
+	Long:              `Remove a model from one or more groups, revoking group members' access.`,
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: smartModelCompletionFunc(isPrivate),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := shared.ResolveClient(cmd)
 		if err != nil {
@@ -56,8 +54,8 @@ var removeFromGroupCmd = &cobra.Command{
 			modelID = args[0]
 		} else {
 			if len(privateModels) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No models with access grants found.")
-				return nil
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No models with access grants found.")
+				return err
 			}
 			options := make([]huh.Option[string], 0, len(privateModels))
 			for _, m := range privateModels {
@@ -77,8 +75,8 @@ var removeFromGroupCmd = &cobra.Command{
 		}
 
 		if len(model.AccessGrants) == 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "Model '%s' has no access grants to remove.\n", model.Name)
-			return nil
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "Model '%s' has no access grants to remove.\n", model.Name)
+			return err
 		}
 
 		// Get assigned group names
@@ -114,8 +112,8 @@ var removeFromGroupCmd = &cobra.Command{
 		}
 
 		if len(selectedGroupNames) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No groups selected.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups selected.")
+			return err
 		}
 
 		// Resolve selected group names to IDs
@@ -139,8 +137,8 @@ var removeFromGroupCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		// Build remaining grants
@@ -165,7 +163,9 @@ var removeFromGroupCmd = &cobra.Command{
 		}
 
 		for _, name := range selectedGroupNames {
-			fmt.Fprintf(cmd.OutOrStdout(), "Successfully removed model '%s' from group '%s'\n", model.Name, name)
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Successfully removed model '%s' from group '%s'\n", model.Name, name); err != nil {
+				return err
+			}
 		}
 
 		// Show remaining status
@@ -183,10 +183,16 @@ var removeFromGroupCmd = &cobra.Command{
 		}
 
 		if remainingGroupGrants == 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "Note: Model '%s' has no remaining group access -- it is now admin-only.\n", model.Name)
-			fmt.Fprintln(cmd.OutOrStdout(), "Tip: Use 'owui models set-visibility public' to make it accessible to all users.")
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Note: Model '%s' has no remaining group access -- it is now admin-only.\n", model.Name); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Tip: Use 'owui models set-visibility public' to make it accessible to all users."); err != nil {
+				return err
+			}
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "Note: Model '%s' still has access grants for %d group(s): %s\n", model.Name, remainingGroupGrants, strings.Join(remainingGroupNames, ", "))
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Note: Model '%s' still has access grants for %d group(s): %s\n", model.Name, remainingGroupGrants, strings.Join(remainingGroupNames, ", ")); err != nil {
+				return err
+			}
 		}
 
 		return nil

@@ -2,8 +2,6 @@ package pipelines
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
@@ -30,8 +28,8 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 		if len(inv.Registrations) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No pipeline registrations found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No pipeline registrations found.")
+			return err
 		}
 
 		var registrationID string
@@ -44,26 +42,17 @@ var removeCmd = &cobra.Command{
 		if len(args) > 0 {
 			registrationID = args[0]
 		} else {
-			selected := ""
 			options := make([]huh.Option[string], 0, len(inv.Registrations))
 			for _, r := range inv.Registrations {
 				label := fmt.Sprintf("%s (idx=%d, %s)", r.RegistrationID, r.URLIdx, r.URL)
 				options = append(options, huh.NewOption(label, fmt.Sprintf("%s|%d", r.RegistrationID, r.URLIdx)))
 			}
-			err := prompts.RunSearchableSelect("Select registration to delete", options, &selected)
+			var idx *int
+			registrationID, idx, err = selectIDWithURLIdx("Select registration to delete", options, "invalid selected registration value", "invalid selected registration urlIdx")
 			if err != nil {
-				return prompts.WrapInteractiveCancelled(err)
+				return err
 			}
-			parts := strings.SplitN(selected, "|", 2)
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid selected registration value: %q", selected)
-			}
-			registrationID = parts[0]
-			idx, err := strconv.Atoi(parts[1])
-			if err != nil {
-				return fmt.Errorf("invalid selected registration urlIdx: %w", err)
-			}
-			explicitIdx = &idx
+			explicitIdx = idx
 		}
 
 		reg, err := resolveRegistration(inv, registrationID, explicitIdx)
@@ -76,16 +65,16 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		if err := client.DeletePipelineRegistration(ctx, api.DeletePipelineForm{ID: reg.RegistrationID, URLIdx: reg.URLIdx}); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted pipeline registration '%s'\n", reg.RegistrationID)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted pipeline registration '%s'\n", reg.RegistrationID)
+		return err
 	},
 }
 

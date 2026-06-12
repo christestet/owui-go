@@ -35,28 +35,46 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), "Registered Pipelines")
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Registered Pipelines"); err != nil {
+			return err
+		}
 		wr := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(wr, "REGISTRATION ID\tURL\tURL IDX\tPIPES")
+		if _, err := fmt.Fprintln(wr, "REGISTRATION ID\tURL\tURL IDX\tPIPES"); err != nil {
+			return err
+		}
 		for _, r := range inv.Registrations {
-			fmt.Fprintf(wr, "%s\t%s\t%d\t%d\n", r.RegistrationID, r.URL, r.URLIdx, r.PipeCount)
+			if _, err := fmt.Fprintf(wr, "%s\t%s\t%d\t%d\n", r.RegistrationID, r.URL, r.URLIdx, r.PipeCount); err != nil {
+				return err
+			}
 		}
-		wr.Flush()
+		if err := wr.Flush(); err != nil {
+			return err
+		}
 
-		fmt.Fprintln(cmd.OutOrStdout())
-		fmt.Fprintln(cmd.OutOrStdout(), "Pipes")
+		if _, err := fmt.Fprintln(cmd.OutOrStdout()); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Pipes"); err != nil {
+			return err
+		}
 		wp := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(wp, "PIPE ID\tNAME\tREGISTRATION ID\tURL IDX")
-		for _, p := range inv.Pipes {
-			fmt.Fprintf(wp, "%s\t%s\t%s\t%d\n", p.PipeID, p.Name, p.RegistrationID, p.URLIdx)
+		if _, err := fmt.Fprintln(wp, "PIPE ID\tNAME\tREGISTRATION ID\tURL IDX"); err != nil {
+			return err
 		}
-		wp.Flush()
+		for _, p := range inv.Pipes {
+			if _, err := fmt.Fprintf(wp, "%s\t%s\t%s\t%d\n", p.PipeID, p.Name, p.RegistrationID, p.URLIdx); err != nil {
+				return err
+			}
+		}
+		if err := wp.Flush(); err != nil {
+			return err
+		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d registration(s), %d pipe(s).\n", len(inv.Registrations), len(inv.Pipes))
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d registration(s), %d pipe(s).\n", len(inv.Registrations), len(inv.Pipes))
+		return err
 	},
 }

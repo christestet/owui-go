@@ -30,8 +30,8 @@ var statusAction = &batchModelAction{
 		if _, err := client.ToggleModel(ctx, m.ID); err != nil {
 			return fmt.Errorf("failed to %s model '%s': %w", action, m.Name, err)
 		}
-		fmt.Fprintf(w, "Successfully %sd model '%s'\n", action, m.Name)
-		return nil
+		_, err := fmt.Fprintf(w, "Successfully %sd model '%s'\n", action, m.Name)
+		return err
 	},
 	completionFilterFn: func(action string) func(api.ModelAccessResponse) bool {
 		switch action {

@@ -72,13 +72,6 @@ func toInt(v any) (int, bool) {
 	}
 }
 
-func toMap(v any) map[string]any {
-	if m, ok := v.(map[string]any); ok {
-		return m
-	}
-	return map[string]any{}
-}
-
 func extractObjectArray(raw any) []map[string]any {
 	switch x := raw.(type) {
 	case []any:
@@ -211,7 +204,9 @@ func buildInventory(ctx context.Context, client *api.Client, warn io.Writer) (*I
 		if err != nil {
 			inv.Registrations[i].PipesError = err.Error()
 			if warn != nil {
-				fmt.Fprintf(warn, "Warning: failed to list pipes for registration %q (urlIdx=%d): %v\n", reg.RegistrationID, reg.URLIdx, err)
+				if _, writeErr := fmt.Fprintf(warn, "Warning: failed to list pipes for registration %q (urlIdx=%d): %v\n", reg.RegistrationID, reg.URLIdx, err); writeErr != nil {
+					return inv, writeErr
+				}
 			}
 			continue
 		}

@@ -33,8 +33,8 @@ var updateCmd = &cobra.Command{
 		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
+			return err
 		}
 
 		var groupName string
@@ -103,16 +103,16 @@ var updateCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		if _, err := client.UpdateGroup(ctx, group.ID, form); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated group '%s'\n", group.Name)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated group '%s'\n", group.Name)
+		return err
 	},
 }
 

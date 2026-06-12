@@ -86,12 +86,12 @@ var addCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully added pipeline registration for '%s' (urlIdx=%d)\n", urlValue, urlIdx)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully added pipeline registration for '%s' (urlIdx=%d)\n", urlValue, urlIdx)
+		return err
 	},
 }
 

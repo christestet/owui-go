@@ -95,14 +95,15 @@ func TestListModels_Pagination(t *testing.T) {
 	// Server that returns 2 pages
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page := r.URL.Query().Get("page")
-		if page == "" || page == "1" {
+		switch page {
+		case "", "1":
 			json.NewEncoder(w).Encode(ModelAccessListResponse{
 				Items: []ModelAccessResponse{
 					{ID: "model-1", Name: "Model 1"},
 				},
 				Total: 2,
 			})
-		} else if page == "2" {
+		case "2":
 			json.NewEncoder(w).Encode(ModelAccessListResponse{
 				Items: []ModelAccessResponse{
 					{ID: "model-2", Name: "Model 2"},

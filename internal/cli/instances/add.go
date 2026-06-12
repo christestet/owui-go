@@ -74,9 +74,13 @@ var addCmd = &cobra.Command{
 			return fmt.Errorf("failed to save config: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Instance %q added\n", name)
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Instance %q added\n", name); err != nil {
+			return err
+		}
 		if cfg.ActiveInstance == name {
-			fmt.Fprintf(cmd.OutOrStdout(), "Set as active instance\n")
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Set as active instance\n"); err != nil {
+				return err
+			}
 		}
 		return nil
 	},

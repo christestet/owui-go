@@ -64,7 +64,9 @@ var healthCmd = &cobra.Command{
 				if marshalErr != nil {
 					return marshalErr
 				}
-				fmt.Fprintln(cmd.OutOrStdout(), string(b))
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(b)); err != nil {
+					return err
+				}
 				if hs.Error != "" {
 					return fmt.Errorf("instance %q is not healthy", targetInstance)
 				}
@@ -72,16 +74,24 @@ var healthCmd = &cobra.Command{
 			}
 
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-			fmt.Fprintln(w, "NAME\tURL\tSTATUS\tACTIVE")
+			if _, err := fmt.Fprintln(w, "NAME\tURL\tSTATUS\tACTIVE"); err != nil {
+				return err
+			}
 			activeMark := ""
 			if hs.Active {
 				activeMark = "*"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", hs.Name, hs.URL, hs.Status, activeMark)
-			w.Flush()
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", hs.Name, hs.URL, hs.Status, activeMark); err != nil {
+				return err
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
 
 			if hs.Error != "" {
-				fmt.Fprintf(cmd.ErrOrStderr(), "\nError details: %v\n", hs.Error)
+				if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "\nError details: %v\n", hs.Error); err != nil {
+					return err
+				}
 				return fmt.Errorf("instance %q is not healthy", targetInstance)
 			}
 			return nil
@@ -108,7 +118,9 @@ var healthCmd = &cobra.Command{
 			if marshalErr != nil {
 				return marshalErr
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(b)); err != nil {
+				return err
+			}
 			var unhealthy []string
 			for _, s := range statuses {
 				if s.Error != "" {
@@ -122,24 +134,32 @@ var healthCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "NAME\tURL\tSTATUS\tACTIVE")
+		if _, err := fmt.Fprintln(w, "NAME\tURL\tSTATUS\tACTIVE"); err != nil {
+			return err
+		}
 		var unhealthy []string
 		for _, hs := range statuses {
 			activeMark := ""
 			if hs.Active {
 				activeMark = "*"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", hs.Name, hs.URL, hs.Status, activeMark)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", hs.Name, hs.URL, hs.Status, activeMark); err != nil {
+				return err
+			}
 			if hs.Error != "" {
 				unhealthy = append(unhealthy, hs.Name)
 			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
 
 		if len(unhealthy) > 0 {
 			for _, hs := range statuses {
 				if hs.Error != "" {
-					fmt.Fprintf(cmd.ErrOrStderr(), "\nError [%s]: %v\n", hs.Name, hs.Error)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "\nError [%s]: %v\n", hs.Name, hs.Error); err != nil {
+						return err
+					}
 				}
 			}
 			return fmt.Errorf("unhealthy instances: %v", unhealthy)
