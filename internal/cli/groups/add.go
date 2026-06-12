@@ -88,12 +88,12 @@ var addCmd = &cobra.Command{
 				return fmt.Errorf("group created but failed to add users: %w", err)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Successfully created group '%s' with %d member(s)\n", group.Name, len(userIDs))
-		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "Successfully created group '%s'\n", group.Name)
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully created group '%s' with %d member(s)\n", group.Name, len(userIDs))
+			return err
 		}
 
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully created group '%s'\n", group.Name)
+		return err
 	},
 }
 
@@ -134,7 +134,9 @@ func runAddWizard(ctx context.Context, in io.Reader, out io.Writer, client *api.
 
 		eligibleUsers := shared.FilterUsersByRole(allUsers, "user")
 		if len(eligibleUsers) == 0 {
-			fmt.Fprintln(out, "No eligible users found (only users with role 'user' can be added).")
+			if _, err := fmt.Fprintln(out, "No eligible users found (only users with role 'user' can be added)."); err != nil {
+				return err
+			}
 		} else {
 			options := make([]huh.Option[string], 0, len(eligibleUsers))
 			for _, u := range eligibleUsers {

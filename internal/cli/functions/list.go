@@ -72,36 +72,43 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
 		if len(functions) == 0 {
 			if filterFlag != "" || typeFlag != "" {
-				fmt.Fprintln(cmd.OutOrStdout(), "No functions found matching the given filters.")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No functions found matching the given filters.")
+				return err
 			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "No functions found.")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No functions found.")
+				return err
 			}
-			return nil
 		}
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "NAME\tID\tTYPE\tSTATUS\tSCOPE\tUPDATED")
+		if _, err := fmt.Fprintln(w, "NAME\tID\tTYPE\tSTATUS\tSCOPE\tUPDATED"); err != nil {
+			return err
+		}
 		for _, f := range functions {
 			updated := "-"
 			if f.UpdatedAt > 0 {
 				updated = time.Unix(f.UpdatedAt, 0).Format("2006-01-02")
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 				f.Name, f.ID, f.Type,
 				functionStatus(f), functionScope(f),
 				updated,
-			)
+			); err != nil {
+				return err
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d function(s).\n", len(functions))
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d function(s).\n", len(functions))
+		return err
 	},
 }
 

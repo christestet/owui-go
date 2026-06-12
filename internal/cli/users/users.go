@@ -132,32 +132,40 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
 		if len(users) == 0 {
 			if filterQuery != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "No users found matching %q.\n", filterQuery)
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "No users found matching %q.\n", filterQuery)
+				return err
 			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
+				return err
 			}
-			return nil
 		}
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNAME\tEMAIL\tROLE")
-		for _, u := range users {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", u.ID, u.Name, u.Email, u.Role)
+		if _, err := fmt.Fprintln(w, "ID\tNAME\tEMAIL\tROLE"); err != nil {
+			return err
 		}
-		w.Flush()
+		for _, u := range users {
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", u.ID, u.Name, u.Email, u.Role); err != nil {
+				return err
+			}
+		}
+		if err := w.Flush(); err != nil {
+			return err
+		}
 
 		if filterQuery != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d user(s) matching %q.\n", len(users), filterQuery)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d user(s) matching %q.\n", len(users), filterQuery)
+			return err
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d user(s).\n", len(users))
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d user(s).\n", len(users))
+			return err
 		}
-		return nil
 	},
 }
 
@@ -192,8 +200,8 @@ var removeCmd = &cobra.Command{
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
 			}
 			if len(options) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
-				return nil
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
+				return err
 			}
 			err := prompts.RunSearchableSelect("Select user to delete", options, &userName)
 			if err != nil {
@@ -211,16 +219,16 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		if err := client.DeleteUser(ctx, user.ID); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted user %s\n", user.Name)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted user %s\n", user.Name)
+		return err
 	},
 }
 
@@ -255,8 +263,8 @@ var updateRoleCmd = &cobra.Command{
 				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s) - %s", u.Name, u.Email, u.Role), u.Name))
 			}
 			if len(options) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
-				return nil
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
+				return err
 			}
 			err := prompts.RunSearchableSelect("Select user to update role", options, &userName)
 			if err != nil {
@@ -286,8 +294,8 @@ var updateRoleCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		form := api.UpdateUserForm{Role: &role}
@@ -295,8 +303,8 @@ var updateRoleCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated user %s's role to %s\n", user.Name, role)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated user %s's role to %s\n", user.Name, role)
+		return err
 	},
 }
 

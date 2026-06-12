@@ -31,8 +31,8 @@ var removeCmd = &cobra.Command{
 		localGroups := shared.FilterLocalGroups(groups)
 
 		if len(localGroups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No local groups found.")
+			return err
 		}
 
 		var selectedNames []string
@@ -55,8 +55,8 @@ var removeCmd = &cobra.Command{
 		}
 
 		if len(selectedNames) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No groups selected.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups selected.")
+			return err
 		}
 
 		// Validate all group names exist
@@ -71,8 +71,8 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			return err
 		}
 
 		for _, name := range selectedNames {
@@ -80,7 +80,9 @@ var removeCmd = &cobra.Command{
 			if err := client.DeleteGroup(ctx, group.ID); err != nil {
 				return fmt.Errorf("failed to delete group %q: %w", name, err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted group '%s'\n", name)
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted group '%s'\n", name); err != nil {
+				return err
+			}
 		}
 
 		return nil

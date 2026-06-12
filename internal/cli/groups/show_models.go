@@ -1,7 +1,6 @@
 package groups
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"text/tabwriter"
@@ -44,8 +43,8 @@ var showModelsCmd = &cobra.Command{
 			return err
 		}
 		if len(groups) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups found.")
+			return err
 		}
 
 		var groupName string
@@ -110,53 +109,40 @@ var showModelsCmd = &cobra.Command{
 }
 
 func renderShowModelsJSON(cmd *cobra.Command, group *api.Group, permission string, includePublic bool, read, write, public []api.ModelAccessResponse) error {
-	type groupRef struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}
-	out := struct {
-		Group  groupRef                     `json:"group"`
-		Read   []api.ModelAccessResponse    `json:"read,omitempty"`
-		Write  []api.ModelAccessResponse    `json:"write,omitempty"`
-		Public []api.ModelAccessResponse    `json:"public,omitempty"`
-	}{
-		Group: groupRef{ID: group.ID, Name: group.Name},
-	}
-	if permission == "all" || permission == "read" {
-		out.Read = read
-	}
-	if permission == "all" || permission == "write" {
-		out.Write = write
-	}
-	if includePublic {
-		out.Public = public
-	}
-
-	b, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
+	return renderGroupPermissionJSON(cmd, group, permission, includePublic, read, write, public)
 }
 
 func renderShowModelsPretty(cmd *cobra.Command, group *api.Group, permission string, includePublic bool, read, write, public []api.ModelAccessResponse) error {
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintf(out, "Group: %s (%s)\n", group.Name, group.ID)
+	if _, err := fmt.Fprintf(out, "Group: %s (%s)\n", group.Name, group.ID); err != nil {
+		return err
+	}
 	totalGrants := len(read) + len(write)
-	fmt.Fprintf(out, "Grants: %d model(s)\n", totalGrants)
-	fmt.Fprintln(out)
+	if _, err := fmt.Fprintf(out, "Grants: %d model(s)\n", totalGrants); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(out); err != nil {
+		return err
+	}
 
-	showSection := func(label string, list []api.ModelAccessResponse) {
-		fmt.Fprintf(out, "── %s ──\n", label)
+	showSection := func(label string, list []api.ModelAccessResponse) error {
+		if _, err := fmt.Fprintf(out, "── %s ──\n", label); err != nil {
+			return err
+		}
 		if len(list) == 0 {
-			fmt.Fprintln(out, "  (none)")
-			fmt.Fprintln(out)
-			return
+			if _, err := fmt.Fprintln(out, "  (none)"); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintln(out); err != nil {
+				return err
+			}
+			return nil
 		}
 		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "  NAME\tID\tSTATUS\tUPDATED")
+		if _, err := fmt.Fprintln(w, "  NAME\tID\tSTATUS\tUPDATED"); err != nil {
+			return err
+		}
 		for _, m := range list {
 			updated := "-"
 			if m.UpdatedAt > 0 {
@@ -166,24 +152,36 @@ func renderShowModelsPretty(cmd *cobra.Command, group *api.Group, permission str
 			if m.IsActive {
 				status = "enabled"
 			}
-			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", m.Name, m.ID, status, updated)
+			if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", m.Name, m.ID, status, updated); err != nil {
+				return err
+			}
 		}
-		w.Flush()
-		fmt.Fprintln(out)
+		if err := w.Flush(); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintln(out)
+		return err
 	}
 
 	if permission == "all" || permission == "read" {
-		showSection("Read", read)
+		if err := showSection("Read", read); err != nil {
+			return err
+		}
 	}
 	if permission == "all" || permission == "write" {
-		showSection("Write", write)
+		if err := showSection("Write", write); err != nil {
+			return err
+		}
 	}
 	if includePublic {
-		showSection("Public (no grants — visible to all)", public)
+		if err := showSection("Public (no grants — visible to all)", public); err != nil {
+			return err
+		}
 	}
 
 	if totalGrants == 0 && !includePublic {
-		fmt.Fprintf(out, "No models grant access to group %q. Use --include-public to also list models visible to everyone.\n", group.Name)
+		_, err := fmt.Fprintf(out, "No models grant access to group %q. Use --include-public to also list models visible to everyone.\n", group.Name)
+		return err
 	}
 
 	return nil

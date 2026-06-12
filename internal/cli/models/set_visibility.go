@@ -25,7 +25,9 @@ var visibilityAction = &batchModelAction{
 	},
 	applyFn: func(ctx context.Context, client *api.Client, m api.ModelAccessResponse, action string, w io.Writer) error {
 		if len(m.AccessGrants) > 0 {
-			fmt.Fprintf(w, "Note: This will remove all %d access grants from '%s'.\n", len(m.AccessGrants), m.Name)
+			if _, err := fmt.Fprintf(w, "Note: This will remove all %d access grants from '%s'.\n", len(m.AccessGrants), m.Name); err != nil {
+				return err
+			}
 		}
 
 		form := api.ModelAccessGrantsForm{
@@ -37,11 +39,11 @@ var visibilityAction = &batchModelAction{
 			return fmt.Errorf("failed to set visibility for model '%s': %w", m.Name, err)
 		}
 
-		fmt.Fprintf(w, "Successfully set model '%s' to public\n", m.Name)
-		return nil
+		_, err := fmt.Fprintf(w, "Successfully set model '%s' to public\n", m.Name)
+		return err
 	},
 	completionFilterFn: func(action string) func(api.ModelAccessResponse) bool {
-		return func(m api.ModelAccessResponse) bool { return isPrivate(m) }
+		return isPrivate
 	},
 }
 

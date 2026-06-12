@@ -3,11 +3,8 @@ package pipelines
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +27,8 @@ var showCmd = &cobra.Command{
 			return err
 		}
 		if len(inv.Pipes) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No pipes found.")
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No pipes found.")
+			return err
 		}
 
 		var pipeID string
@@ -44,26 +41,17 @@ var showCmd = &cobra.Command{
 		if len(args) > 0 {
 			pipeID = args[0]
 		} else {
-			selected := ""
 			options := make([]huh.Option[string], 0, len(inv.Pipes))
 			for _, p := range inv.Pipes {
 				label := fmt.Sprintf("%s (%s / idx=%d)", p.PipeID, p.RegistrationID, p.URLIdx)
 				options = append(options, huh.NewOption(label, fmt.Sprintf("%s|%d", p.PipeID, p.URLIdx)))
 			}
-			err := prompts.RunSearchableSelect("Select pipe", options, &selected)
+			var idx *int
+			pipeID, idx, err = selectIDWithURLIdx("Select pipe", options, "invalid selected pipe value", "invalid selected pipe urlIdx")
 			if err != nil {
-				return prompts.WrapInteractiveCancelled(err)
+				return err
 			}
-			parts := strings.SplitN(selected, "|", 2)
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid selected pipe value: %q", selected)
-			}
-			pipeID = parts[0]
-			idx, err := strconv.Atoi(parts[1])
-			if err != nil {
-				return fmt.Errorf("invalid selected pipe urlIdx: %w", err)
-			}
-			explicitIdx = &idx
+			explicitIdx = idx
 		}
 
 		pipe, err := resolvePipe(inv, pipeID, explicitIdx)
@@ -77,21 +65,38 @@ var showCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(b))
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Pipe ID: %s\n", pipe.PipeID)
-		fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", pipe.Name)
-		fmt.Fprintf(cmd.OutOrStdout(), "Description: %s\n", pipe.Description)
-		fmt.Fprintf(cmd.OutOrStdout(), "Registration ID: %s\n", pipe.RegistrationID)
-		fmt.Fprintf(cmd.OutOrStdout(), "Registration URL: %s\n", pipe.RegistrationURL)
-		fmt.Fprintf(cmd.OutOrStdout(), "URL IDX: %d\n", pipe.URLIdx)
+		out := cmd.OutOrStdout()
+		if _, err := fmt.Fprintf(out, "Pipe ID: %s\n", pipe.PipeID); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Name: %s\n", pipe.Name); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Description: %s\n", pipe.Description); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Registration ID: %s\n", pipe.RegistrationID); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Registration URL: %s\n", pipe.RegistrationURL); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "URL IDX: %d\n", pipe.URLIdx); err != nil {
+			return err
+		}
 
 		raw, err := json.MarshalIndent(pipe.Raw, "", "  ")
 		if err == nil {
-			fmt.Fprintln(cmd.OutOrStdout(), "Raw:")
-			fmt.Fprintln(cmd.OutOrStdout(), string(raw))
+			if _, err := fmt.Fprintln(out, "Raw:"); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintln(out, string(raw)); err != nil {
+				return err
+			}
 		}
 		return nil
 	},

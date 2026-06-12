@@ -19,12 +19,16 @@ var Cmd = &cobra.Command{
 
 func runUpdate(cmd *cobra.Command, args []string) error {
 	if version.Version == "dev" {
-		fmt.Fprintln(cmd.OutOrStdout(), "Skipping update: running a development build.")
-		return nil
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), "Skipping update: running a development build.")
+		return err
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Current version: %s\n", version.Version)
-	fmt.Fprintln(cmd.OutOrStdout(), "Checking for updates...")
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Current version: %s\n", version.Version); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Checking for updates..."); err != nil {
+		return err
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -34,14 +38,16 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("update check failed: %w", err)
 	}
 	if !updateAvailable {
-		fmt.Fprintln(cmd.OutOrStdout(), "Already up to date.")
-		return nil
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), "Already up to date.")
+		return err
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "New version available: %s\nDownloading and applying update...\n", release.Version())
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "New version available: %s\nDownloading and applying update...\n", release.Version()); err != nil {
+		return err
+	}
 	if err := updater.Apply(ctx, release); err != nil {
 		return fmt.Errorf("update failed: %w", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated to %s. Restart owui to use the new version.\n", release.Version())
-	return nil
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully updated to %s. Restart owui to use the new version.\n", release.Version())
+	return err
 }

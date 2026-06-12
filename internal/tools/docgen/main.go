@@ -19,7 +19,7 @@ func main() {
 	front := flag.Bool("frontmatter", true, "Prepend YAML front matter to markdown")
 	flag.Parse()
 
-	if err := os.MkdirAll(*out, 0o755); err != nil {
+	if err := os.MkdirAll(*out, 0o750); err != nil {
 		log.Fatal(err)
 	}
 
@@ -38,9 +38,7 @@ func main() {
 
 				return fmt.Sprintf("---\ntitle: %q\ndescription: \"Reference and examples for the %s command.\"\n---\n\n", title, title)
 			}
-			link := func(name string) string { return strings.ToLower(name) }
-
-			if err := doc.GenMarkdownTreeCustom(cmd, *out, prep, link); err != nil {
+			if err := doc.GenMarkdownTreeCustom(cmd, *out, prep, strings.ToLower); err != nil {
 				log.Fatal(err)
 			}
 		} else {

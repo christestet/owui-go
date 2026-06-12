@@ -99,8 +99,8 @@ var showCmd = &cobra.Command{
 				return err
 			}
 			if len(allModels) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No models found.")
-				return nil
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No models found.")
+				return err
 			}
 			options := make([]huh.Option[string], 0, len(allModels))
 			for _, m := range allModels {
@@ -181,56 +181,106 @@ func renderShowJSON(cmd *cobra.Command, model *api.ModelAccessResponse, groupMap
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	return err
 }
 
 func renderShowPretty(cmd *cobra.Command, model *api.ModelAccessResponse, groupMap map[string]string) error {
 	out := cmd.OutOrStdout()
 	width := getTerminalWidth()
+	printLine := func(args ...any) error {
+		_, err := fmt.Fprintln(out, args...)
+		return err
+	}
 
 	// Header
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, titleStyle.Render(model.Name))
-	fmt.Fprintln(out, subtitleStyle.Render(model.ID))
+	if err := printLine(); err != nil {
+		return err
+	}
+	if err := printLine(titleStyle.Render(model.Name)); err != nil {
+		return err
+	}
+	if err := printLine(subtitleStyle.Render(model.ID)); err != nil {
+		return err
+	}
 
 	// General section
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, renderSectionDivider("General", width))
-	fmt.Fprintln(out, renderKeyValue("Base Model", model.BaseModelID))
-	fmt.Fprintln(out, renderKeyValue("Description", model.Meta.Description))
+	if err := printLine(); err != nil {
+		return err
+	}
+	if err := printLine(renderSectionDivider("General", width)); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Base Model", model.BaseModelID)); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Description", model.Meta.Description)); err != nil {
+		return err
+	}
 	if model.User != nil {
 		owner := fmt.Sprintf("%s (%s)", model.User.Name, model.User.Email)
-		fmt.Fprintln(out, renderKeyValue("Owner", owner))
+		if err := printLine(renderKeyValue("Owner", owner)); err != nil {
+			return err
+		}
 	}
 	if model.CreatedAt > 0 {
-		fmt.Fprintln(out, renderKeyValue("Created", time.Unix(model.CreatedAt, 0).Format("2006-01-02 15:04:05")))
+		if err := printLine(renderKeyValue("Created", time.Unix(model.CreatedAt, 0).Format("2006-01-02 15:04:05"))); err != nil {
+			return err
+		}
 	}
 	if model.UpdatedAt > 0 {
-		fmt.Fprintln(out, renderKeyValue("Updated", time.Unix(model.UpdatedAt, 0).Format("2006-01-02 15:04:05")))
+		if err := printLine(renderKeyValue("Updated", time.Unix(model.UpdatedAt, 0).Format("2006-01-02 15:04:05"))); err != nil {
+			return err
+		}
 	}
 
 	// Status section
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, renderSectionDivider("Status", width))
-	fmt.Fprintln(out, renderKeyValue("Status", renderStatusValue(model.IsActive)))
-	fmt.Fprintln(out, renderKeyValue("Visibility", renderVisibilityValue(*model)))
+	if err := printLine(); err != nil {
+		return err
+	}
+	if err := printLine(renderSectionDivider("Status", width)); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Status", renderStatusValue(model.IsActive))); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Visibility", renderVisibilityValue(*model))); err != nil {
+		return err
+	}
 
 	// Capabilities section
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, renderSectionDivider("Capabilities", width))
-	fmt.Fprintln(out, renderKeyValue("Vision", renderBoolValue(model.Meta.Capabilities.Vision)))
-	fmt.Fprintln(out, renderKeyValue("Citations", renderBoolValue(model.Meta.Capabilities.Citations)))
-	fmt.Fprintln(out, renderKeyValue("Code Interpreter", renderBoolValue(model.Meta.Capabilities.CodeInterpreter)))
+	if err := printLine(); err != nil {
+		return err
+	}
+	if err := printLine(renderSectionDivider("Capabilities", width)); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Vision", renderBoolValue(model.Meta.Capabilities.Vision))); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Citations", renderBoolValue(model.Meta.Capabilities.Citations))); err != nil {
+		return err
+	}
+	if err := printLine(renderKeyValue("Code Interpreter", renderBoolValue(model.Meta.Capabilities.CodeInterpreter))); err != nil {
+		return err
+	}
 
 	// Access Grants section
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, renderSectionDivider("Access Grants", width))
+	if err := printLine(); err != nil {
+		return err
+	}
+	if err := printLine(renderSectionDivider("Access Grants", width)); err != nil {
+		return err
+	}
 	if len(model.AccessGrants) == 0 {
-		fmt.Fprintln(out, dimStyle.PaddingLeft(2).Render("No access grants -- model is public."))
+		if err := printLine(dimStyle.PaddingLeft(2).Render("No access grants -- model is public.")); err != nil {
+			return err
+		}
 	} else {
 		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "  GROUP\tPERMISSION\tGRANTED")
+		if _, err := fmt.Fprintln(w, "  GROUP\tPERMISSION\tGRANTED"); err != nil {
+			return err
+		}
 		for _, grant := range model.AccessGrants {
 			groupName := grant.PrincipalID
 			if name, ok := groupMap[grant.PrincipalID]; ok {
@@ -240,11 +290,14 @@ func renderShowPretty(cmd *cobra.Command, model *api.ModelAccessResponse, groupM
 			if grant.CreatedAt > 0 {
 				granted = time.Unix(grant.CreatedAt, 0).Format("2006-01-02")
 			}
-			fmt.Fprintf(w, "  %s\t%s\t%s\n", groupName, grant.Permission, granted)
+			if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\n", groupName, grant.Permission, granted); err != nil {
+				return err
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
 	}
 
-	fmt.Fprintln(out)
-	return nil
+	return printLine()
 }

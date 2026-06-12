@@ -87,8 +87,8 @@ func (b *batchModelAction) runE(cmd *cobra.Command, args []string) error {
 	modelIDs := args[1:]
 	if len(modelIDs) == 0 {
 		if len(eligibleModels) == 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "No models to %s.\n", action)
-			return nil
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "No models to %s.\n", action)
+			return err
 		}
 
 		labelFn := b.optionLabelFn
@@ -111,8 +111,8 @@ func (b *batchModelAction) runE(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(modelIDs) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No models selected.")
-		return nil
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), "No models selected.")
+		return err
 	}
 
 	var resolvedModels []api.ModelAccessResponse
@@ -134,8 +134,8 @@ func (b *batchModelAction) runE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !confirmed {
-		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
-		return nil
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		return err
 	}
 
 	for _, m := range resolvedModels {

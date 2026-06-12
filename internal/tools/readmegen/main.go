@@ -40,6 +40,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//nolint:gosec // README.md is a public project artifact selected by the developer.
 	if err := os.WriteFile(*readmePath, []byte(updated), 0o644); err != nil {
 		log.Fatalf("write readme: %v", err)
 	}
@@ -90,7 +91,7 @@ func renderCLISection(commands []commandDoc) string {
 	b.WriteString("| Command | Description |\n")
 	b.WriteString("| --- | --- |\n")
 	for _, c := range commands {
-		b.WriteString(fmt.Sprintf("| `%s` | %s |\n", c.Path, sanitizeTable(c.Short)))
+		fmt.Fprintf(&b, "| `%s` | %s |\n", c.Path, sanitizeTable(c.Short))
 	}
 	return b.String()
 }

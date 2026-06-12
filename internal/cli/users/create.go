@@ -55,8 +55,8 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully created user %s with role %s\n", name, role)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Successfully created user %s with role %s\n", name, role)
+		return err
 	},
 }
 

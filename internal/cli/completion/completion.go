@@ -49,18 +49,19 @@ PowerShell:
 `,
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
-	Args:                  cobra.ExactValidArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+	RunE: func(cmd *cobra.Command, args []string) error {
 		switch args[0] {
 		case "bash":
-			cmd.Root().GenBashCompletion(os.Stdout)
+			return cmd.Root().GenBashCompletion(os.Stdout)
 		case "zsh":
-			cmd.Root().GenZshCompletion(os.Stdout)
+			return cmd.Root().GenZshCompletion(os.Stdout)
 		case "fish":
-			cmd.Root().GenFishCompletion(os.Stdout, true)
+			return cmd.Root().GenFishCompletion(os.Stdout, true)
 		case "powershell":
-			cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
+			return cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
 		}
+		return nil
 	},
 }
 
@@ -160,9 +161,9 @@ func installCompletion(root *cobra.Command, shell string) error {
 
 func installZshCompletion(root *cobra.Command, home string) error {
 	zshDir := filepath.Join(home, ".zsh", "completions")
-	if err := os.MkdirAll(zshDir, 0755); err != nil {
+	if err := os.MkdirAll(zshDir, 0750); err != nil {
 		zshDir = filepath.Join(home, ".zfunc")
-		if err := os.MkdirAll(zshDir, 0755); err != nil {
+		if err := os.MkdirAll(zshDir, 0750); err != nil {
 			return err
 		}
 	}
@@ -176,9 +177,9 @@ func installZshCompletion(root *cobra.Command, home string) error {
 
 func installBashCompletion(root *cobra.Command, home string) error {
 	bashDir := filepath.Join(home, ".local", "share", "bash-completion", "completions")
-	if err := os.MkdirAll(bashDir, 0755); err != nil {
+	if err := os.MkdirAll(bashDir, 0750); err != nil {
 		bashDir = filepath.Join(home, ".bash_completion.d")
-		if err := os.MkdirAll(bashDir, 0755); err != nil {
+		if err := os.MkdirAll(bashDir, 0750); err != nil {
 			bashDir = home
 		}
 	}
@@ -192,7 +193,7 @@ func installBashCompletion(root *cobra.Command, home string) error {
 
 func installFishCompletion(root *cobra.Command, home string) error {
 	fishDir := filepath.Join(home, ".config", "fish", "completions")
-	if err := os.MkdirAll(fishDir, 0755); err != nil {
+	if err := os.MkdirAll(fishDir, 0750); err != nil {
 		return err
 	}
 	return writeCompletionFile(filepath.Join(fishDir, "owui.fish"), func(f *os.File) error {
@@ -201,11 +202,14 @@ func installFishCompletion(root *cobra.Command, home string) error {
 }
 
 func writeCompletionFile(dest string, gen func(*os.File) error) error {
+	// #nosec G304 -- dest is a shell completion path derived from user home and selected shell.
 	f, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	return gen(f)
 }
 
@@ -214,6 +218,7 @@ const owuiShellMarker = "# owui shell completions"
 func ensureZshConfig(home string) error {
 	rcPath := filepath.Join(home, ".zshrc")
 
+	// #nosec G304 -- rcPath is the user's shell rc file under their home directory.
 	content, err := os.ReadFile(rcPath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -240,11 +245,14 @@ func ensureZshConfig(home string) error {
 	lines = append(lines, "autoload -U compinit; compinit")
 	lines = append(lines, "")
 
+	//nolint:gosec // rcPath is the user's shell rc file under their home directory and should keep normal rc-file permissions.
 	f, err := os.OpenFile(rcPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	_, err = f.WriteString(strings.Join(lines, "\n"))
 	if err != nil {
@@ -260,6 +268,7 @@ func ensureZshConfig(home string) error {
 func ensureBashConfig(home string) error {
 	rcPath := filepath.Join(home, ".bashrc")
 
+	// #nosec G304 -- rcPath is the user's shell rc file under their home directory.
 	content, err := os.ReadFile(rcPath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -276,11 +285,14 @@ func ensureBashConfig(home string) error {
 		return nil
 	}
 
+	//nolint:gosec // rcPath is the user's shell rc file under their home directory and should keep normal rc-file permissions.
 	f, err := os.OpenFile(rcPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	block := fmt.Sprintf("\n%s\n%s\n", owuiShellMarker, sourceLine)
 	_, err = f.WriteString(block)
