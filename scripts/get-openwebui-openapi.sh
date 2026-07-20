@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eo pipefail
 
-# configuration of the version - currently we are using 0.9.5
-VERSION="0.9.5"
+# configuration of the version - currently we are using 0.10.2
+VERSION="0.10.2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
