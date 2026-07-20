@@ -79,57 +79,50 @@ var removeFromGroupCmd = &cobra.Command{
 			return err
 		}
 
-		// Get assigned group names
-		type assignedGroup struct {
-			id   string
-			name string
+		groupsByID := make(map[string]api.Group, len(allGroups))
+		for _, group := range allGroups {
+			groupsByID[group.ID] = group
 		}
-		var assigned []assignedGroup
+		var assigned []api.Group
 		for _, grant := range model.AccessGrants {
 			if grant.PrincipalType == "group" {
-				name := grant.PrincipalID
-				if n, ok := groupMap[grant.PrincipalID]; ok {
-					name = n
+				group, ok := groupsByID[grant.PrincipalID]
+				if !ok {
+					group = api.Group{ID: grant.PrincipalID, Name: grant.PrincipalID}
 				}
-				assigned = append(assigned, assignedGroup{id: grant.PrincipalID, name: name})
+				assigned = append(assigned, group)
 			}
 		}
 
 		groupsFlag, _ := cmd.Flags().GetStringSlice("groups")
-		var selectedGroupNames []string
+		var selectedGroupIdentifiers []string
 		if len(groupsFlag) > 0 {
-			selectedGroupNames = groupsFlag
+			selectedGroupIdentifiers = groupsFlag
 		} else {
-			// Interactive multi-select
-			options := make([]huh.Option[string], 0, len(assigned))
-			for _, a := range assigned {
-				options = append(options, huh.NewOption(a.name, a.name))
-			}
-			err := prompts.RunSearchableMultiSelect("Select groups to revoke access", options, &selectedGroupNames)
+			err := prompts.RunSearchableMultiSelect("Select groups to revoke access", shared.GroupOptions(assigned), &selectedGroupIdentifiers)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		if len(selectedGroupNames) == 0 {
+		if len(selectedGroupIdentifiers) == 0 {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups selected.")
 			return err
 		}
 
-		// Resolve selected group names to IDs
-		removeGroupIDs := make(map[string]bool)
-		for _, name := range selectedGroupNames {
-			found := false
-			for _, a := range assigned {
-				if a.name == name {
-					removeGroupIDs[a.id] = true
-					found = true
-					break
-				}
+		// Resolve selected group identifiers to IDs.
+		removeGroupIDs := make(map[string]bool, len(selectedGroupIdentifiers))
+		selectedGroupNames := make([]string, 0, len(selectedGroupIdentifiers))
+		for _, identifier := range selectedGroupIdentifiers {
+			group, err := shared.ResolveGroup(assigned, identifier)
+			if err != nil {
+				return fmt.Errorf("group is not assigned to model %q: %w", model.Name, err)
 			}
-			if !found {
-				return fmt.Errorf("group %q is not assigned to model '%s'", name, model.Name)
+			if removeGroupIDs[group.ID] {
+				continue
 			}
+			removeGroupIDs[group.ID] = true
+			selectedGroupNames = append(selectedGroupNames, group.Name)
 		}
 
 		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm removing model '%s' from %d group(s): %s?", model.Name, len(selectedGroupNames), strings.Join(selectedGroupNames, ", ")))
@@ -200,7 +193,7 @@ var removeFromGroupCmd = &cobra.Command{
 }
 
 func init() {
-	removeFromGroupCmd.Flags().StringSlice("groups", nil, "group names to remove the model from")
+	removeFromGroupCmd.Flags().StringSlice("groups", nil, "group names or IDs to remove the model from")
 
 	_ = removeFromGroupCmd.RegisterFlagCompletionFunc("groups", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
@@ -219,22 +212,20 @@ func init() {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		groupMap := make(map[string]string)
+		groupMap := make(map[string]api.Group)
 		for _, g := range groups {
-			groupMap[g.ID] = g.Name
+			groupMap[g.ID] = g
 		}
-		var comps []string
+		var assignedGroups []api.Group
 		for _, grant := range model.AccessGrants {
 			if grant.PrincipalType == "group" {
-				name := grant.PrincipalID
-				if n, ok := groupMap[grant.PrincipalID]; ok {
-					name = n
+				group, ok := groupMap[grant.PrincipalID]
+				if !ok {
+					group = api.Group{ID: grant.PrincipalID, Name: grant.PrincipalID}
 				}
-				if strings.HasPrefix(name, toComplete) {
-					comps = append(comps, name)
-				}
+				assignedGroups = append(assignedGroups, group)
 			}
 		}
-		return comps, cobra.ShellCompDirectiveNoFileComp
+		return shared.GroupCompletions(assignedGroups, nil, toComplete), cobra.ShellCompDirectiveNoFileComp
 	})
 }

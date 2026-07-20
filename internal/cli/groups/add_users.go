@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
@@ -42,60 +43,82 @@ var addUsersCmd = &cobra.Command{
 		// Resolve group
 		groupName, _ := cmd.Flags().GetString("group")
 		if groupName == "" {
-			groupOptions := make([]huh.Option[string], 0, len(localGroups))
-			for _, g := range localGroups {
-				groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
-			}
+			groupOptions := shared.GroupOptions(localGroups)
 			err := prompts.RunSearchableSelect("Select group", groupOptions, &groupName)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := shared.FindGroupByName(localGroups, groupName)
+		group, err := shared.ResolveGroup(localGroups, groupName)
 		if err != nil {
 			return err
 		}
 
-		// Filter to only role=user
-		eligibleUsers := shared.FilterUsersByRole(allUsers, "user")
+		groupExport, err := client.ExportGroup(ctx, group.ID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch users of group %s: %w", group.Name, err)
+		}
 
-		var selectedNames []string
+		eligibleUsers := filterAddableUsers(allUsers, groupExport.UserIDs)
+
+		var userIDs []string
+		var resolvedNames []string
 		if len(args) > 0 {
-			selectedNames = args
+			existingUserIDs := makeStringSet(groupExport.UserIDs)
+			for _, identifier := range args {
+				u, err := shared.ResolveUser(allUsers, identifier)
+				if err != nil {
+					return err
+				}
+				if u.Role != "user" {
+					return fmt.Errorf("user %q has role %q; only users with role 'user' can be added to groups", u.Name, u.Role)
+				}
+				if _, exists := existingUserIDs[u.ID]; exists {
+					continue
+				}
+				userIDs = append(userIDs, u.ID)
+				resolvedNames = append(resolvedNames, u.Name)
+				existingUserIDs[u.ID] = struct{}{}
+			}
 		} else {
 			if len(eligibleUsers) == 0 {
-				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No eligible users found (only users with role 'user' can be added to groups).")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No users available to add (only users with role 'user' who are not already members can be added).")
 				return err
 			}
-			options := make([]huh.Option[string], 0, len(eligibleUsers))
-			for _, u := range eligibleUsers {
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
-			}
-			err := prompts.RunSearchableMultiSelect("Select users to add", options, &selectedNames)
+
+			var selectedUserIDs []string
+			err := prompts.RunSearchableMultiSelect("Select users to add", userIDOptions(eligibleUsers), &selectedUserIDs)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
+
+			usersByID := make(map[string]api.User, len(eligibleUsers))
+			for _, u := range eligibleUsers {
+				usersByID[u.ID] = u
+			}
+			selected := makeStringSet(nil)
+			for _, userID := range selectedUserIDs {
+				if _, exists := selected[userID]; exists {
+					continue
+				}
+				u, exists := usersByID[userID]
+				if !exists {
+					return fmt.Errorf("selected user ID %q not found", userID)
+				}
+				userIDs = append(userIDs, u.ID)
+				resolvedNames = append(resolvedNames, u.Name)
+				selected[userID] = struct{}{}
+			}
 		}
 
-		if len(selectedNames) == 0 {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
-			return err
-		}
-
-		// Resolve user names to IDs
-		var userIDs []string
-		var resolvedNames []string
-		for _, name := range selectedNames {
-			u, err := shared.FindUserByName(allUsers, name)
-			if err != nil {
+		if len(userIDs) == 0 {
+			if len(args) > 0 {
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "All selected users are already members of group '%s'.\n", group.Name)
 				return err
 			}
-			if u.Role != "user" {
-				return fmt.Errorf("user %q has role %q; only users with role 'user' can be added to groups", u.Name, u.Role)
-			}
-			userIDs = append(userIDs, u.ID)
-			resolvedNames = append(resolvedNames, u.Name)
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
+			return err
 		}
 
 		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm adding %d user(s) to group '%s'?", len(resolvedNames), group.Name))
@@ -117,6 +140,33 @@ var addUsersCmd = &cobra.Command{
 }
 
 func init() {
-	addUsersCmd.Flags().String("group", "", "group name to add users to")
+	addUsersCmd.Flags().String("group", "", "group name or ID to add users to")
 	_ = addUsersCmd.RegisterFlagCompletionFunc("group", localGroupCompletionFunc)
+}
+
+func filterAddableUsers(users []api.User, existingUserIDs []string) []api.User {
+	existing := makeStringSet(existingUserIDs)
+	addable := make([]api.User, 0, len(users))
+	for _, u := range users {
+		if u.Role != "user" {
+			continue
+		}
+		if _, exists := existing[u.ID]; exists {
+			continue
+		}
+		addable = append(addable, u)
+	}
+	return addable
+}
+
+func userIDOptions(users []api.User) []huh.Option[string] {
+	return shared.UserOptions(users)
+}
+
+func makeStringSet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		set[value] = struct{}{}
+	}
+	return set
 }

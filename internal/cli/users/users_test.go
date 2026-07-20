@@ -703,3 +703,101 @@ func TestAddToGroupCommand_NonUserRole(t *testing.T) {
 		t.Errorf("expected role-related error, got: %v", err)
 	}
 }
+
+func TestRemoveCommand_UsesUnambiguousIdentifier(t *testing.T) {
+	var deletedID string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/":
+			_ = json.NewEncoder(w).Encode(api.UserListResponse{Users: []api.User{
+				{ID: "u1", Name: "Alex", Email: "one@example.com", Role: "user"},
+				{ID: "u2", Name: "Alex", Email: "two@example.com", Role: "user"},
+			}, Total: 2})
+		case r.Method == http.MethodDelete:
+			deletedID = strings.TrimPrefix(r.URL.Path, "/api/v1/users/")
+			_, _ = w.Write([]byte(`true`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	tests := []struct {
+		name        string
+		identifier  string
+		confirm     string
+		wantDeleted string
+		wantError   string
+	}{
+		{name: "duplicate name rejected", identifier: "Alex", wantError: "ambiguous"},
+		{name: "email targets correct user", identifier: "two@example.com", confirm: "y\n", wantDeleted: "u2"},
+		{name: "ID targets correct user", identifier: "u1", confirm: "y\n", wantDeleted: "u1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deletedID = ""
+			removeCmd.SetIn(strings.NewReader(tt.confirm))
+			removeCmd.SetOut(new(bytes.Buffer))
+			err := removeCmd.RunE(removeCmd, []string{tt.identifier})
+			if tt.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantError) {
+					t.Fatalf("remove error = %v, want %q", err, tt.wantError)
+				}
+				if deletedID != "" {
+					t.Fatalf("ambiguous remove deleted user %q", deletedID)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("remove error = %v", err)
+			}
+			if deletedID != tt.wantDeleted {
+				t.Fatalf("deleted user = %q, want %q", deletedID, tt.wantDeleted)
+			}
+		})
+	}
+}
+
+func TestAddToGroupCommand_FiltersExistingMembersAndDeduplicates(t *testing.T) {
+	var receivedUserIDs []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/":
+			_ = json.NewEncoder(w).Encode(api.UserListResponse{Users: []api.User{
+				{ID: "u1", Name: "Alex", Email: "one@example.com", Role: "user"},
+				{ID: "u2", Name: "Alex", Email: "two@example.com", Role: "user"},
+			}, Total: 2})
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/groups/":
+			_ = json.NewEncoder(w).Encode([]api.Group{{ID: "g1", Name: "team"}})
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/groups/id/g1/export":
+			_ = json.NewEncoder(w).Encode(api.Group{ID: "g1", Name: "team", UserIDs: []string{"u1"}})
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/groups/id/g1/users/add":
+			var form api.UserIdsForm
+			if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+				t.Errorf("decode request: %v", err)
+			}
+			receivedUserIDs = form.UserIDs
+			_, _ = w.Write([]byte(`{}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	addToGroupCmd.SetIn(strings.NewReader("y\n"))
+	addToGroupCmd.SetOut(new(bytes.Buffer))
+	if err := addToGroupCmd.Flags().Set("group", "g1"); err != nil {
+		t.Fatalf("set group flag: %v", err)
+	}
+	defer func() { _ = addToGroupCmd.Flags().Set("group", "") }()
+	if err := addToGroupCmd.RunE(addToGroupCmd, []string{"one@example.com", "two@example.com", "u2"}); err != nil {
+		t.Fatalf("add-to-group error = %v", err)
+	}
+	if len(receivedUserIDs) != 1 || receivedUserIDs[0] != "u2" {
+		t.Fatalf("add-to-group user IDs = %v, want [u2]", receivedUserIDs)
+	}
+}

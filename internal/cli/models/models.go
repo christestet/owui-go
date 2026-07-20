@@ -153,7 +153,7 @@ func multiModelCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 	return comps, cobra.ShellCompDirectiveNoFileComp
 }
 
-// localGroupCompletionFunc completes only local group names.
+// localGroupCompletionFunc completes only local group identifiers.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
@@ -163,11 +163,5 @@ func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	var comps []string
-	for _, g := range shared.FilterLocalGroups(groups) {
-		if strings.HasPrefix(g.Name, toComplete) {
-			comps = append(comps, g.Name)
-		}
-	}
-	return comps, cobra.ShellCompDirectiveNoFileComp
+	return shared.GroupCompletions(shared.FilterLocalGroups(groups), args, toComplete), cobra.ShellCompDirectiveNoFileComp
 }

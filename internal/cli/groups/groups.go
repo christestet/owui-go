@@ -2,7 +2,6 @@ package groups
 
 import (
 	"context"
-	"strings"
 
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/shared"
@@ -49,7 +48,7 @@ func filterOAuthGroups(groups []api.Group) []api.Group {
 	return oauth
 }
 
-// localGroupCompletionFunc completes only local group names.
+// localGroupCompletionFunc completes only local group identifiers.
 func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
@@ -59,16 +58,10 @@ func localGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete stri
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	var comps []string
-	for _, g := range shared.FilterLocalGroups(groups) {
-		if strings.HasPrefix(g.Name, toComplete) {
-			comps = append(comps, g.Name)
-		}
-	}
-	return comps, cobra.ShellCompDirectiveNoFileComp
+	return shared.GroupCompletions(shared.FilterLocalGroups(groups), nil, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
-// multiLocalGroupCompletionFunc completes multiple local group names, excluding already-selected ones.
+// multiLocalGroupCompletionFunc completes multiple local group identifiers, excluding selected ones.
 func multiLocalGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	client := shared.ResolveClientForCompletion(cmd)
 	if client == nil {
@@ -78,23 +71,10 @@ func multiLocalGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	selected := make(map[string]bool)
-	for _, a := range args {
-		selected[a] = true
-	}
-	var comps []string
-	for _, g := range shared.FilterLocalGroups(groups) {
-		if selected[g.Name] {
-			continue
-		}
-		if strings.HasPrefix(g.Name, toComplete) {
-			comps = append(comps, g.Name)
-		}
-	}
-	return comps, cobra.ShellCompDirectiveNoFileComp
+	return shared.GroupCompletions(shared.FilterLocalGroups(groups), args, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
-// allGroupCompletionFunc completes all group names (both local and oauth).
+// allGroupCompletionFunc completes all group identifiers (both local and oauth).
 func allGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) != 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -107,16 +87,10 @@ func allGroupCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	var comps []string
-	for _, g := range groups {
-		if strings.HasPrefix(g.Name, toComplete) {
-			comps = append(comps, g.Name)
-		}
-	}
-	return comps, cobra.ShellCompDirectiveNoFileComp
+	return shared.GroupCompletions(groups, nil, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
-// multiUserCompletionFunc returns a ValidArgsFunction that completes multiple user names filtered by role.
+// multiUserCompletionFunc completes multiple user identifiers filtered by role.
 func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		client := shared.ResolveClientForCompletion(cmd)
@@ -127,22 +101,13 @@ func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		selected := make(map[string]bool)
-		for _, a := range args {
-			selected[a] = true
-		}
-		var comps []string
+		var eligible []api.User
 		for _, u := range users {
-			if selected[u.Name] {
-				continue
-			}
 			if roleFilter != "" && u.Role != roleFilter {
 				continue
 			}
-			if strings.HasPrefix(u.Name, toComplete) {
-				comps = append(comps, u.Name)
-			}
+			eligible = append(eligible, u)
 		}
-		return comps, cobra.ShellCompDirectiveNoFileComp
+		return shared.UserCompletions(eligible, args, toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/christestet/owui-go/internal/cli/shared"
@@ -42,17 +41,14 @@ var removeUsersCmd = &cobra.Command{
 		// Resolve group
 		groupName, _ := cmd.Flags().GetString("group")
 		if groupName == "" {
-			groupOptions := make([]huh.Option[string], 0, len(localGroups))
-			for _, g := range localGroups {
-				groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
-			}
+			groupOptions := shared.GroupOptions(localGroups)
 			err := prompts.RunSearchableSelect("Select group", groupOptions, &groupName)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := shared.FindGroupByName(localGroups, groupName)
+		group, err := shared.ResolveGroup(localGroups, groupName)
 		if err != nil {
 			return err
 		}
@@ -79,52 +75,35 @@ var removeUsersCmd = &cobra.Command{
 			}
 		}
 
-		var selectedNames []string
+		var selectedIdentifiers []string
 		if len(args) > 0 {
-			// Validate that provided names are members of the group
-			allowed := make(map[string]struct{})
-			for _, u := range groupUsers {
-				allowed[u.Name] = struct{}{}
-			}
-			for _, name := range args {
-				if _, ok := allowed[name]; ok {
-					selectedNames = append(selectedNames, name)
-				}
-			}
-			if len(selectedNames) == 0 {
-				_, err := fmt.Fprintln(cmd.OutOrStdout(), "No valid users specified (must be members of the group).")
-				return err
-			}
+			selectedIdentifiers = args
 		} else {
 			if len(groupUsers) == 0 {
 				_, err := fmt.Fprintf(cmd.OutOrStdout(), "No users found in group %s.\n", group.Name)
 				return err
 			}
-			options := make([]huh.Option[string], 0, len(groupUsers))
-			for _, u := range groupUsers {
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
-			}
-			err := prompts.RunSearchableMultiSelect("Select users to remove from group", options, &selectedNames)
+			err := prompts.RunSearchableMultiSelect("Select users to remove from group", shared.UserOptions(groupUsers), &selectedIdentifiers)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		if len(selectedNames) == 0 {
+		if len(selectedIdentifiers) == 0 {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No users selected.")
 			return err
 		}
 
-		// Resolve user names to IDs
-		var userIDs []string
-		var resolvedNames []string
-		for _, name := range selectedNames {
-			u, err := shared.FindUserByName(groupUsers, name)
-			if err != nil {
-				return err
-			}
+		// Resolve user identifiers to IDs.
+		resolvedUsers, err := shared.ResolveUsers(groupUsers, selectedIdentifiers)
+		if err != nil {
+			return fmt.Errorf("user must be a member of group %q: %w", group.Name, err)
+		}
+		userIDs := make([]string, 0, len(resolvedUsers))
+		resolvedNames := make([]string, 0, len(resolvedUsers))
+		for _, u := range resolvedUsers {
 			userIDs = append(userIDs, u.ID)
-			resolvedNames = append(resolvedNames, u.Name)
+			resolvedNames = append(resolvedNames, shared.UserLabel(u))
 		}
 
 		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm removing %d user(s) from group '%s'?", len(resolvedNames), group.Name))
@@ -146,6 +125,6 @@ var removeUsersCmd = &cobra.Command{
 }
 
 func init() {
-	removeUsersCmd.Flags().String("group", "", "group name to remove users from")
+	removeUsersCmd.Flags().String("group", "", "group name or ID to remove users from")
 	_ = removeUsersCmd.RegisterFlagCompletionFunc("group", localGroupCompletionFunc)
 }

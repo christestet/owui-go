@@ -72,12 +72,12 @@ var addCmd = &cobra.Command{
 				return fmt.Errorf("failed to fetch users: %w", err)
 			}
 
-			var userIDs []string
-			for _, userName := range usersFlag {
-				u, err := shared.FindUserByName(allUsers, userName)
-				if err != nil {
-					return err
-				}
+			resolvedUsers, err := shared.ResolveUsers(allUsers, usersFlag)
+			if err != nil {
+				return err
+			}
+			userIDs := make([]string, 0, len(resolvedUsers))
+			for _, u := range resolvedUsers {
 				if u.Role != "user" {
 					return fmt.Errorf("user %q has role %q; only users with role 'user' can be added to groups", u.Name, u.Role)
 				}
@@ -101,7 +101,7 @@ func init() {
 	addCmd.Flags().String("name", "", "group name")
 	addCmd.Flags().String("description", "", "group description")
 	addCmd.Flags().String("permissions", "", "group permissions as JSON string")
-	addCmd.Flags().StringSlice("users", nil, "usernames to add to the group (only role 'user')")
+	addCmd.Flags().StringSlice("users", nil, "user IDs, emails, usernames, or unique names to add (only role 'user')")
 }
 
 func runAddWizard(ctx context.Context, in io.Reader, out io.Writer, client *api.Client, name, description, permissions *string, users *[]string) error {
@@ -138,15 +138,11 @@ func runAddWizard(ctx context.Context, in io.Reader, out io.Writer, client *api.
 				return err
 			}
 		} else {
-			options := make([]huh.Option[string], 0, len(eligibleUsers))
-			for _, u := range eligibleUsers {
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
-			}
-			var selectedNames []string
-			if err := prompts.RunSearchableMultiSelect("Select users to add", options, &selectedNames); err != nil {
+			var selectedIDs []string
+			if err := prompts.RunSearchableMultiSelect("Select users to add", shared.UserOptions(eligibleUsers), &selectedIDs); err != nil {
 				return err
 			}
-			*users = selectedNames
+			*users = selectedIDs
 		}
 	}
 

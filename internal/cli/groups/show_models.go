@@ -6,7 +6,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/charmbracelet/huh"
 	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/christestet/owui-go/internal/cli/shared"
@@ -47,20 +46,16 @@ var showModelsCmd = &cobra.Command{
 			return err
 		}
 
-		var groupName string
+		var groupIdentifier string
 		if len(args) > 0 {
-			groupName = args[0]
+			groupIdentifier = args[0]
 		} else {
-			options := make([]huh.Option[string], 0, len(groups))
-			for _, g := range groups {
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", g.Name, groupType(g)), g.Name))
-			}
-			if err := prompts.RunSearchableSelect("Select group", options, &groupName); err != nil {
+			if err := prompts.RunSearchableSelect("Select group", shared.GroupOptions(groups), &groupIdentifier); err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := shared.FindGroupByName(groups, groupName)
+		group, err := shared.ResolveGroup(groups, groupIdentifier)
 		if err != nil {
 			return err
 		}
