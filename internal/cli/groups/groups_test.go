@@ -870,6 +870,133 @@ func TestShowPermissionsCommand_JSONOutput(t *testing.T) {
 
 // --- add-users command tests ---
 
+func TestFilterAddableUsers(t *testing.T) {
+	tests := []struct {
+		name            string
+		users           []api.User
+		existingUserIDs []string
+		wantIDs         []string
+	}{
+		{
+			name: "filters existing members and non-user roles",
+			users: []api.User{
+				{ID: "u1", Name: "alice", Role: "user"},
+				{ID: "u2", Name: "bob", Role: "user"},
+				{ID: "u3", Name: "charlie", Role: "admin"},
+			},
+			existingUserIDs: []string{"u1"},
+			wantIDs:         []string{"u2"},
+		},
+		{
+			name: "keeps all new users",
+			users: []api.User{
+				{ID: "u1", Name: "alice", Role: "user"},
+				{ID: "u2", Name: "bob", Role: "user"},
+			},
+			wantIDs: []string{"u1", "u2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterAddableUsers(tt.users, tt.existingUserIDs)
+			gotIDs := make([]string, 0, len(got))
+			for _, u := range got {
+				gotIDs = append(gotIDs, u.ID)
+			}
+			if strings.Join(gotIDs, ",") != strings.Join(tt.wantIDs, ",") {
+				t.Fatalf("filterAddableUsers() IDs = %v, want %v", gotIDs, tt.wantIDs)
+			}
+		})
+	}
+}
+
+func TestUserIDOptions_UseHumanReadableLabelsAndUniqueIDs(t *testing.T) {
+	users := []api.User{
+		{ID: "u1", Name: "Alex", Email: "alex.one@example.com", Role: "user"},
+		{ID: "u2", Name: "Alex", Email: "alex.two@example.com", Role: "user"},
+	}
+
+	options := userIDOptions(users)
+	if len(options) != 2 {
+		t.Fatalf("userIDOptions() returned %d options, want 2", len(options))
+	}
+
+	if options[0].Key != "Alex (alex.one@example.com)" || options[1].Key != "Alex (alex.two@example.com)" {
+		t.Errorf("userIDOptions() labels = %q, %q; want human-readable name and email", options[0].Key, options[1].Key)
+	}
+	if options[0].Value != "u1" || options[1].Value != "u2" {
+		t.Errorf("userIDOptions() values = %q, %q; want unique user IDs", options[0].Value, options[1].Value)
+	}
+}
+
+func TestAddUsersCommand_FiltersExistingMembersFromBatch(t *testing.T) {
+	var receivedUserIDs []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/":
+			if err := json.NewEncoder(w).Encode(api.UserListResponse{
+				Users: []api.User{
+					{ID: "u1", Name: "alice", Email: "alice@example.com", Role: "user"},
+					{ID: "u2", Name: "bob", Email: "bob@example.com", Role: "user"},
+				},
+				Total: 2,
+			}); err != nil {
+				t.Errorf("encode users response: %v", err)
+			}
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/groups/":
+			if err := json.NewEncoder(w).Encode([]api.Group{{ID: "g1", Name: "developers"}}); err != nil {
+				t.Errorf("encode groups response: %v", err)
+			}
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/groups/id/g1/export":
+			if err := json.NewEncoder(w).Encode(api.Group{ID: "g1", Name: "developers", UserIDs: []string{"u1"}}); err != nil {
+				t.Errorf("encode group export response: %v", err)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/groups/id/g1/users/add":
+			var form api.UserIdsForm
+			if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+				t.Errorf("decode add-users request: %v", err)
+			}
+			receivedUserIDs = form.UserIDs
+			if err := json.NewEncoder(w).Encode(api.Group{ID: "g1", Name: "developers"}); err != nil {
+				t.Errorf("encode add-users response: %v", err)
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	buf := new(bytes.Buffer)
+	addUsersCmd.SetIn(strings.NewReader("y\n"))
+	addUsersCmd.SetOut(buf)
+	defer addUsersCmd.SetIn(nil)
+	defer addUsersCmd.SetOut(nil)
+
+	if err := addUsersCmd.Flags().Set("group", "developers"); err != nil {
+		t.Fatalf("set group flag: %v", err)
+	}
+	defer func() {
+		if err := addUsersCmd.Flags().Set("group", ""); err != nil {
+			t.Errorf("reset group flag: %v", err)
+		}
+	}()
+
+	if err := addUsersCmd.RunE(addUsersCmd, []string{"alice", "bob", "bob"}); err != nil {
+		t.Fatalf("addUsersCmd.RunE() error = %v", err)
+	}
+
+	if len(receivedUserIDs) != 1 || receivedUserIDs[0] != "u2" {
+		t.Fatalf("add-users request user IDs = %v, want [u2]", receivedUserIDs)
+	}
+	if !strings.Contains(buf.String(), "Successfully added bob to group 'developers'") {
+		t.Errorf("output = %q, want success message for newly added user only", buf.String())
+	}
+}
+
 func TestAddUsersCommand_NoActiveInstance(t *testing.T) {
 	cleanup := setupEmptyConfig(t)
 	defer cleanup()
