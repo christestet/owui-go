@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.4](https://github.com/christestet/owui-go/compare/v0.9.3...v0.9.4) (2026-07-20)
+
+
+### Bug Fixes
+
+* support adding multiple users to groups ([#70](https://github.com/christestet/owui-go/issues/70)) ([73f786b](https://github.com/christestet/owui-go/commit/73f786bfb5f745a901ba5451d5bdad8df3f5d8dc))
+
 ## [0.9.3](https://github.com/christestet/owui-go/compare/v0.9.2...v0.9.3) (2026-06-12)
 
 
