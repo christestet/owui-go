@@ -43,17 +43,14 @@ var addUsersCmd = &cobra.Command{
 		// Resolve group
 		groupName, _ := cmd.Flags().GetString("group")
 		if groupName == "" {
-			groupOptions := make([]huh.Option[string], 0, len(localGroups))
-			for _, g := range localGroups {
-				groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
-			}
+			groupOptions := shared.GroupOptions(localGroups)
 			err := prompts.RunSearchableSelect("Select group", groupOptions, &groupName)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := shared.FindGroupByName(localGroups, groupName)
+		group, err := shared.ResolveGroup(localGroups, groupName)
 		if err != nil {
 			return err
 		}
@@ -69,8 +66,8 @@ var addUsersCmd = &cobra.Command{
 		var resolvedNames []string
 		if len(args) > 0 {
 			existingUserIDs := makeStringSet(groupExport.UserIDs)
-			for _, name := range args {
-				u, err := shared.FindUserByName(allUsers, name)
+			for _, identifier := range args {
+				u, err := shared.ResolveUser(allUsers, identifier)
 				if err != nil {
 					return err
 				}
@@ -143,7 +140,7 @@ var addUsersCmd = &cobra.Command{
 }
 
 func init() {
-	addUsersCmd.Flags().String("group", "", "group name to add users to")
+	addUsersCmd.Flags().String("group", "", "group name or ID to add users to")
 	_ = addUsersCmd.RegisterFlagCompletionFunc("group", localGroupCompletionFunc)
 }
 
@@ -163,11 +160,7 @@ func filterAddableUsers(users []api.User, existingUserIDs []string) []api.User {
 }
 
 func userIDOptions(users []api.User) []huh.Option[string] {
-	options := make([]huh.Option[string], 0, len(users))
-	for _, u := range users {
-		options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.ID))
-	}
-	return options
+	return shared.UserOptions(users)
 }
 
 func makeStringSet(values []string) map[string]struct{} {

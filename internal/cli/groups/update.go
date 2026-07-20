@@ -37,21 +37,17 @@ var updateCmd = &cobra.Command{
 			return err
 		}
 
-		var groupName string
+		var groupIdentifier string
 		if len(args) > 0 {
-			groupName = args[0]
+			groupIdentifier = args[0]
 		} else {
-			options := make([]huh.Option[string], 0, len(localGroups))
-			for _, g := range localGroups {
-				options = append(options, huh.NewOption(g.Name, g.Name))
-			}
-			err := prompts.RunSearchableSelect("Select group to update", options, &groupName)
+			err := prompts.RunSearchableSelect("Select group to update", shared.GroupOptions(localGroups), &groupIdentifier)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		group, err := shared.FindGroupByName(localGroups, groupName)
+		group, err := shared.ResolveGroup(localGroups, groupIdentifier)
 		if err != nil {
 			return err
 		}

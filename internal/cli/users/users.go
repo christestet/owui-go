@@ -34,7 +34,7 @@ func Register(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(usersCmd)
 }
 
-// userCompletionFunc returns a ValidArgsFunction that completes user names from the API.
+// userCompletionFunc completes unambiguous user identifiers from the API.
 func userCompletionFunc() func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
@@ -48,17 +48,11 @@ func userCompletionFunc() func(cmd *cobra.Command, args []string, toComplete str
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		var comps []string
-		for _, u := range users {
-			if strings.HasPrefix(u.Name, toComplete) {
-				comps = append(comps, u.Name)
-			}
-		}
-		return comps, cobra.ShellCompDirectiveNoFileComp
+		return shared.UserCompletions(users, nil, toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
-// multiUserCompletionFunc returns a ValidArgsFunction that allows completing multiple user names.
+// multiUserCompletionFunc allows completing multiple unambiguous user identifiers.
 func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		client := shared.ResolveClientForCompletion(cmd)
@@ -69,24 +63,14 @@ func multiUserCompletionFunc(roleFilter string) func(cmd *cobra.Command, args []
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		// Build set of already-selected names
-		selected := make(map[string]bool)
-		for _, a := range args {
-			selected[a] = true
-		}
-		var comps []string
+		var eligible []api.User
 		for _, u := range users {
-			if selected[u.Name] {
-				continue
-			}
 			if roleFilter != "" && u.Role != roleFilter {
 				continue
 			}
-			if strings.HasPrefix(u.Name, toComplete) {
-				comps = append(comps, u.Name)
-			}
+			eligible = append(eligible, u)
 		}
-		return comps, cobra.ShellCompDirectiveNoFileComp
+		return shared.UserCompletions(eligible, args, toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
@@ -172,7 +156,7 @@ var listCmd = &cobra.Command{
 // --- remove command ---
 
 var removeCmd = &cobra.Command{
-	Use:               "remove [username]",
+	Use:               "remove [user]",
 	Short:             "Remove a user",
 	Aliases:           []string{"rm"},
 	Args:              cobra.MaximumNArgs(1),
@@ -190,26 +174,22 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		var userName string
+		var userIdentifier string
 		if len(args) > 0 {
-			userName = args[0]
+			userIdentifier = args[0]
 		} else {
-			// Interactive select
-			options := make([]huh.Option[string], 0, len(users))
-			for _, u := range users {
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s)", u.Name, u.Email), u.Name))
-			}
+			options := shared.UserOptions(users)
 			if len(options) == 0 {
 				_, err := fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
 				return err
 			}
-			err := prompts.RunSearchableSelect("Select user to delete", options, &userName)
+			err := prompts.RunSearchableSelect("Select user to delete", options, &userIdentifier)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		user, err := shared.FindUserByName(users, userName)
+		user, err := shared.ResolveUser(users, userIdentifier)
 		if err != nil {
 			return err
 		}
@@ -237,7 +217,7 @@ var removeCmd = &cobra.Command{
 var validRoles = []string{"admin", "user", "pending"}
 
 var updateRoleCmd = &cobra.Command{
-	Use:               "update-role [username]",
+	Use:               "update-role [user]",
 	Short:             "Update a user's role",
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: userCompletionFunc(),
@@ -254,25 +234,25 @@ var updateRoleCmd = &cobra.Command{
 			return err
 		}
 
-		var userName string
+		var userIdentifier string
 		if len(args) > 0 {
-			userName = args[0]
+			userIdentifier = args[0]
 		} else {
-			options := make([]huh.Option[string], 0, len(users))
-			for _, u := range users {
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s) - %s", u.Name, u.Email, u.Role), u.Name))
+			options := shared.UserOptions(users)
+			for i, u := range users {
+				options[i].Key += " - " + u.Role
 			}
 			if len(options) == 0 {
 				_, err := fmt.Fprintln(cmd.OutOrStdout(), msgNoUsersFound)
 				return err
 			}
-			err := prompts.RunSearchableSelect("Select user to update role", options, &userName)
+			err := prompts.RunSearchableSelect("Select user to update role", options, &userIdentifier)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		user, err := shared.FindUserByName(users, userName)
+		user, err := shared.ResolveUser(users, userIdentifier)
 		if err != nil {
 			return err
 		}

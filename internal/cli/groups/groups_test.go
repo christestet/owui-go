@@ -609,6 +609,43 @@ func TestRemoveCommand_GroupNotFound(t *testing.T) {
 	}
 }
 
+func TestRemoveCommand_DuplicateGroupNameCannotDeleteWrongTarget(t *testing.T) {
+	var deletedID string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/groups/":
+			_ = json.NewEncoder(w).Encode([]api.Group{
+				{ID: "g1", Name: "team", Description: "First"},
+				{ID: "g2", Name: "team", Description: "Second"},
+			})
+		case r.Method == http.MethodDelete:
+			deletedID = strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/groups/id/"), "/delete")
+			_, _ = w.Write([]byte(`true`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	cleanup := setupTestConfig(t, server.URL)
+	defer cleanup()
+
+	removeCmd.SetOut(new(bytes.Buffer))
+	if err := removeCmd.RunE(removeCmd, []string{"team"}); err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("ambiguous remove error = %v, want ambiguity error", err)
+	}
+	if deletedID != "" {
+		t.Fatalf("ambiguous group name deleted group %q", deletedID)
+	}
+
+	removeCmd.SetIn(strings.NewReader("y\n"))
+	if err := removeCmd.RunE(removeCmd, []string{"g2"}); err != nil {
+		t.Fatalf("ID-based remove error = %v", err)
+	}
+	if deletedID != "g2" {
+		t.Fatalf("deleted group = %q, want g2", deletedID)
+	}
+}
+
 // --- update command tests ---
 
 func TestUpdateCommand_NoActiveInstance(t *testing.T) {

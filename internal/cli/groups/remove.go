@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/huh"
+	"github.com/christestet/owui-go/internal/api"
 	"github.com/christestet/owui-go/internal/cli/prompts"
 	"github.com/christestet/owui-go/internal/cli/shared"
 	"github.com/spf13/cobra"
@@ -35,35 +35,37 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		var selectedNames []string
+		var selectedIdentifiers []string
 		if len(args) > 0 {
-			selectedNames = args
+			selectedIdentifiers = args
 		} else {
-			// Interactive multi-select
-			options := make([]huh.Option[string], 0, len(localGroups))
-			for _, g := range localGroups {
-				members := "-"
-				if g.MemberCount != nil {
-					members = fmt.Sprintf("%d", *g.MemberCount)
-				}
-				options = append(options, huh.NewOption(fmt.Sprintf("%s (%s members)", g.Name, members), g.Name))
-			}
-			err := prompts.RunSearchableMultiSelect("Select groups to delete", options, &selectedNames)
+			err := prompts.RunSearchableMultiSelect("Select groups to delete", shared.GroupOptions(localGroups), &selectedIdentifiers)
 			if err != nil {
 				return prompts.WrapInteractiveCancelled(err)
 			}
 		}
 
-		if len(selectedNames) == 0 {
+		if len(selectedIdentifiers) == 0 {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No groups selected.")
 			return err
 		}
 
-		// Validate all group names exist
-		for _, name := range selectedNames {
-			if _, err := shared.FindGroupByName(localGroups, name); err != nil {
+		resolvedGroups := make([]api.Group, 0, len(selectedIdentifiers))
+		seen := make(map[string]struct{}, len(selectedIdentifiers))
+		for _, identifier := range selectedIdentifiers {
+			group, err := shared.ResolveGroup(localGroups, identifier)
+			if err != nil {
 				return err
 			}
+			if _, ok := seen[group.ID]; ok {
+				continue
+			}
+			seen[group.ID] = struct{}{}
+			resolvedGroups = append(resolvedGroups, *group)
+		}
+		selectedNames := make([]string, 0, len(resolvedGroups))
+		for _, group := range resolvedGroups {
+			selectedNames = append(selectedNames, group.Name)
 		}
 
 		confirmed, err := prompts.ConfirmYN(cmd.InOrStdin(), cmd.OutOrStdout(), fmt.Sprintf("Confirm deleting %d group(s): %s?", len(selectedNames), strings.Join(selectedNames, ", ")))
@@ -75,12 +77,11 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		for _, name := range selectedNames {
-			group, _ := shared.FindGroupByName(localGroups, name)
+		for _, group := range resolvedGroups {
 			if err := client.DeleteGroup(ctx, group.ID); err != nil {
-				return fmt.Errorf("failed to delete group %q: %w", name, err)
+				return fmt.Errorf("failed to delete group %q: %w", group.Name, err)
 			}
-			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted group '%s'\n", name); err != nil {
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Successfully deleted group '%s'\n", group.Name); err != nil {
 				return err
 			}
 		}

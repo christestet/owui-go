@@ -53,7 +53,7 @@ Two modes:
 		hasGroupFlag := groupFlag != "" || len(groupsFlag) > 0
 
 		var modelIDs []string
-		var groupNames []string
+		var groupIdentifiers []string
 
 		if !hasModelFlag && !hasGroupFlag {
 			// Interactive wizard
@@ -81,11 +81,7 @@ Two modes:
 				modelIDs = []string{selectedModel}
 
 				// Select groups
-				groupOptions := make([]huh.Option[string], 0, len(localGroups))
-				for _, g := range localGroups {
-					groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
-				}
-				err = prompts.RunSearchableMultiSelect("Select groups to grant access", groupOptions, &groupNames)
+				err = prompts.RunSearchableMultiSelect("Select groups to grant access", shared.GroupOptions(localGroups), &groupIdentifiers)
 				if err != nil {
 					return prompts.WrapInteractiveCancelled(err)
 				}
@@ -101,16 +97,12 @@ Two modes:
 				}
 
 				// Select one group
-				groupOptions := make([]huh.Option[string], 0, len(localGroups))
-				for _, g := range localGroups {
-					groupOptions = append(groupOptions, huh.NewOption(g.Name, g.Name))
-				}
 				var selectedGroup string
-				err = prompts.RunSearchableSelect("Select group", groupOptions, &selectedGroup)
+				err = prompts.RunSearchableSelect("Select group", shared.GroupOptions(localGroups), &selectedGroup)
 				if err != nil {
 					return prompts.WrapInteractiveCancelled(err)
 				}
-				groupNames = []string{selectedGroup}
+				groupIdentifiers = []string{selectedGroup}
 			}
 		} else {
 			// Non-interactive
@@ -120,13 +112,13 @@ Two modes:
 				modelIDs = modelsFlag
 			}
 			if groupFlag != "" {
-				groupNames = []string{groupFlag}
+				groupIdentifiers = []string{groupFlag}
 			} else {
-				groupNames = groupsFlag
+				groupIdentifiers = groupsFlag
 			}
 		}
 
-		if len(modelIDs) == 0 || len(groupNames) == 0 {
+		if len(modelIDs) == 0 || len(groupIdentifiers) == 0 {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), "No models or groups selected.")
 			return err
 		}
@@ -143,11 +135,16 @@ Two modes:
 
 		// Resolve groups
 		var resolvedGroups []api.Group
-		for _, name := range groupNames {
-			g, err := shared.FindGroupByName(localGroups, name)
+		seenGroups := make(map[string]struct{}, len(groupIdentifiers))
+		for _, identifier := range groupIdentifiers {
+			g, err := shared.ResolveGroup(localGroups, identifier)
 			if err != nil {
 				return err
 			}
+			if _, ok := seenGroups[g.ID]; ok {
+				continue
+			}
+			seenGroups[g.ID] = struct{}{}
 			resolvedGroups = append(resolvedGroups, *g)
 		}
 
@@ -234,8 +231,8 @@ Two modes:
 func init() {
 	addToGroupCmd.Flags().String("model", "", "single model name/id to add to groups")
 	addToGroupCmd.Flags().StringSlice("models", nil, "model names/ids to add to a group")
-	addToGroupCmd.Flags().String("group", "", "single group name to add models to")
-	addToGroupCmd.Flags().StringSlice("groups", nil, "group names to add a model to")
+	addToGroupCmd.Flags().String("group", "", "single group name or ID to add models to")
+	addToGroupCmd.Flags().StringSlice("groups", nil, "group names or IDs to add a model to")
 
 	_ = addToGroupCmd.RegisterFlagCompletionFunc("model", modelCompletionFunc)
 	_ = addToGroupCmd.RegisterFlagCompletionFunc("models", multiModelCompletionFunc)
